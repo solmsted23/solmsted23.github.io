@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ZIP Code Data Map with D3</title>
+  <title>ZIP Code Income Map</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://unpkg.com/topojson@3"></script>
   <style>
@@ -21,16 +21,15 @@
 </head>
 <body>
 
-<h2>Upload CSV with ZIP and Value</h2>
-<input type="file" id="fileInput" accept="jobs1.csv">
+<h2>Upload CSV: <code>jobs_2007-2021.csv</code></h2>
+<input type="file" id="fileInput" accept=".csv">
 <svg id="map" width="960" height="600"></svg>
 <div id="legend"></div>
 
 <script>
-// Load map and ZIP coordinates first
 Promise.all([
   d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"),
-  d3.json("https://gist.githubusercontent.com/OpenSourceData/5004376/raw/zip_codes_states.json") // zip -> lat/lng
+  d3.json("https://gist.githubusercontent.com/OpenSourceData/5004376/raw/zip_codes_states.json")
 ]).then(([us, zipData]) => {
   const zipLookup = {};
   zipData.forEach(d => zipLookup[d.zip] = [+d.longitude, +d.latitude]);
@@ -51,29 +50,30 @@ Promise.all([
     .attr("fill", "#f0f0f0")
     .attr("stroke", "#999");
 
-  // File upload handler
   d3.select("#fileInput").on("change", function(event) {
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file || file.name !== "jobs_2007-2021.csv") {
+      alert("Please upload the correct file: jobs_2007-2021.csv");
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = function(e) {
       const data = d3.csvParse(e.target.result);
 
-      const filtered = data.filter(d => zipLookup[d.zip]);
+      const filtered = data.filter(d => zipLookup[d.FIPS] && d.Income && !isNaN(+d.Income));
       filtered.forEach(d => {
-        d.coords = projection(zipLookup[d.zip]);
-        d.value = +d.value;
+        const projected = projection(zipLookup[d.FIPS]);
+        if (projected) {
+          d.coords = projected;
+          d.value = +d.Income;
+        }
       });
 
-      // Color scale
       const valueExtent = d3.extent(filtered, d => d.value);
       const colorScale = d3.scaleSequential(d3.interpolateBlues).domain(valueExtent);
-
-      // Radius scale
       const radiusScale = d3.scaleSqrt().domain(valueExtent).range([2, 12]);
 
-      // Clear previous dots
       svg.selectAll("circle").remove();
 
       svg.append("g")
@@ -88,14 +88,13 @@ Promise.all([
           .attr("stroke-width", 0.5)
           .attr("opacity", 0.75)
         .append("title")
-          .text(d => `ZIP: ${d.zip}\nValue: ${d.value}`);
+          .text(d => `FIPS: ${d.FIPS}\nCounty: ${d.County}, ${d.State}\nYear: ${d.Year}\nStatus: ${d.EmploymentStatus}\nIncome: $${d.value.toFixed(2)}`);
 
       drawLegend(colorScale, valueExtent);
     };
     reader.readAsText(file);
   });
 
-  // Draw color legend
   function drawLegend(colorScale, domain) {
     const legendWidth = 300;
     const legendHeight = 12;
@@ -116,7 +115,7 @@ Promise.all([
       .style("display", "flex")
       .style("justify-content", "space-between")
       .style("font-size", "12px")
-      .html(`<span>${domain[0].toFixed(1)}</span><span>${domain[1].toFixed(1)}</span>`);
+      .html(`<span>$${domain[0].toFixed(0)}</span><span>$${domain[1].toFixed(0)}</span>`);
   }
 });
 </script>
