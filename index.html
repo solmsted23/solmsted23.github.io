@@ -28,8 +28,8 @@
 
 
   <script>
-    const data = [4, 8, 15, 16, 23, 42];
-
+    // const data = [4, 8, 15, 16, 23, 42];
+    data = d3.csv("cpi_index.csv")
 
 
     document.getElementById("date").innerHTML = data.join(", ");
@@ -46,7 +46,7 @@
       .attr("y", d => 500 - d * 10);
 
 
-      d3.csv("jobs_2007-2021.csv")
+      
 
       const x = d3.scaleBand()
         .domain(data.map(d => d.label))
