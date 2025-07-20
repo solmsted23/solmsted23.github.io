@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>ZIP Code Income Map</title>
+  <meta charset="UTF-8" />
+  <title>US Jobs Map with Year Slider</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://unpkg.com/topojson@3"></script>
   <style>
@@ -17,20 +17,29 @@
     #legend {
       margin-top: 10px;
     }
+    #slider-container {
+      margin: 20px;
+    }
   </style>
 </head>
 <body>
 
-<h2>Upload CSV: <code>jobs_2007-2021.csv</code></h2>
-<input type="file" id="fileInput" accept=".csv">
+<h2>Jobs by ZIP (Income)</h2>
+<div id="slider-container">
+  <label for="yearSlider">Year: <span id="yearLabel">2007</span></label>
+  <input type="range" id="yearSlider" min="2007" max="2021" step="1" value="2007" />
+</div>
+
 <svg id="map" width="960" height="600"></svg>
 <div id="legend"></div>
 
 <script>
+
 Promise.all([
   d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"),
-  d3.json("https://gist.githubusercontent.com/OpenSourceData/5004376/raw/zip_codes_states.json")
-]).then(([us, zipData]) => {
+  d3.json("https://gist.githubusercontent.com/OpenSourceData/5004376/raw/zip_codes_states.json"),
+  d3.csv("jobs_2007-2021.csv")
+]).then(([us, zipData, jobsData]) => {
   const zipLookup = {};
   zipData.forEach(d => zipLookup[d.zip] = [+d.longitude, +d.latitude]);
 
@@ -50,50 +59,42 @@ Promise.all([
     .attr("fill", "#f0f0f0")
     .attr("stroke", "#999");
 
-  d3.select("#fileInput").on("change", function(event) {
-    const file = event.target.files[0];
-    if (!file || file.name !== "jobs_2007-2021.csv") {
-      alert("Please upload the correct file: jobs_2007-2021.csv");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const data = d3.csvParse(e.target.result);
-
-      const filtered = data.filter(d => zipLookup[d.FIPS] && d.Income && !isNaN(+d.Income));
-      filtered.forEach(d => {
-        const projected = projection(zipLookup[d.FIPS]);
-        if (projected) {
-          d.coords = projected;
-          d.value = +d.Income;
-        }
-      });
-
-      const valueExtent = d3.extent(filtered, d => d.value);
-      const colorScale = d3.scaleSequential(d3.interpolateBlues).domain(valueExtent);
-      const radiusScale = d3.scaleSqrt().domain(valueExtent).range([2, 12]);
-
-      svg.selectAll("circle").remove();
-
-      svg.append("g")
-        .selectAll("circle")
-        .data(filtered)
-        .join("circle")
-          .attr("cx", d => d.coords[0])
-          .attr("cy", d => d.coords[1])
-          .attr("r", d => radiusScale(d.value))
-          .attr("fill", d => colorScale(d.value))
-          .attr("stroke", "#333")
-          .attr("stroke-width", 0.5)
-          .attr("opacity", 0.75)
-        .append("title")
-          .text(d => `FIPS: ${d.FIPS}\nCounty: ${d.County}, ${d.State}\nYear: ${d.Year}\nStatus: ${d.EmploymentStatus}\nIncome: $${d.value.toFixed(2)}`);
-
-      drawLegend(colorScale, valueExtent);
-    };
-    reader.readAsText(file);
+  jobsData.forEach(d => {
+    d.Year = +d.Year;
+    d.Income = +d.Income;
   });
+
+  const yearSlider = d3.select("#yearSlider");
+  const yearLabel = d3.select("#yearLabel");
+
+  function updateMap(year) {
+    const filtered = jobsData.filter(d => d.Year === year && zipLookup[d.FIPS]);
+    filtered.forEach(d => {
+      d.coords = projection(zipLookup[d.FIPS]);
+    });
+
+    const incomeExtent = d3.extent(filtered, d => d.Income);
+    const colorScale = d3.scaleSequential(d3.interpolateViridis).domain(incomeExtent);
+    const radiusScale = d3.scaleSqrt().domain(incomeExtent).range([2, 10]);
+
+    svg.selectAll("circle").remove();
+
+    svg.append("g")
+      .selectAll("circle")
+      .data(filtered)
+      .join("circle")
+        .attr("cx", d => d.coords[0])
+        .attr("cy", d => d.coords[1])
+        .attr("r", d => radiusScale(d.Income))
+        .attr("fill", d => colorScale(d.Income))
+        .attr("stroke", "#333")
+        .attr("stroke-width", 0.5)
+        .attr("opacity", 0.75)
+      .append("title")
+        .text(d => `${d.County}, ${d.State}\nZIP: ${d.FIPS}\nIncome: $${d.Income}`);
+
+    drawLegend(colorScale, incomeExtent);
+  }
 
   function drawLegend(colorScale, domain) {
     const legendWidth = 300;
@@ -117,6 +118,16 @@ Promise.all([
       .style("font-size", "12px")
       .html(`<span>$${domain[0].toFixed(0)}</span><span>$${domain[1].toFixed(0)}</span>`);
   }
+
+  // Initial draw
+  updateMap(+yearSlider.property("value"));
+
+  // Slider interaction
+  yearSlider.on("input", function() {
+    const year = +this.value;
+    yearLabel.text(year);
+    updateMap(year);
+  });
 });
 </script>
 
