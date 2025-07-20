@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>US Jobs Map with Year Slider</title>
+  <meta charset="UTF-8">
+  <title>County-Level Income Choropleth</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://unpkg.com/topojson@3"></script>
   <style>
@@ -17,119 +17,110 @@
     #legend {
       margin-top: 10px;
     }
-    #slider-container {
-      margin: 20px;
+    #yearSlider {
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
 
-<h2>Jobs by ZIP (Income)</h2>
-<div id="slider-container">
-  <label for="yearSlider">Year: <span id="yearLabel">2007</span></label>
-  <input type="range" id="yearSlider" min="2007" max="2021" step="1" value="2007" />
+<h2>U.S. County Income by Year</h2>
+<svg id="map" width="960" height="600"></svg>
+
+<div id="yearSlider">
+  <input type="range" id="slider" min="2007" max="2021" step="1" value="2007">
+  <span id="slider-value">2007</span>
 </div>
 
-<svg id="map" width="960" height="600"></svg>
 <div id="legend"></div>
 
 <script>
+const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
+
+const svg = d3.select("#map");
+const width = +svg.attr("width");
+const height = +svg.attr("height");
+const projection = d3.geoAlbersUsa().translate([width / 2, height / 2]).scale(1300);
+const path = d3.geoPath().projection(projection);
+
+let jobsData = [];
+let us = null;
 
 Promise.all([
-  d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"),
-  d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json"),
+  d3.json(mapUrl),
+  d3.csv("jobs_2007-2021.csv", d => ({
+    FIPS: d.FIPS.padStart(5, '0'),
+    State: d.State,
+    County: d.County,
+    EmploymentStatus: d.EmploymentStatus,
+    Year: +d.Year,
+    Income: +d.Income
+  }))
+]).then(([usData, csvData]) => {
+  us = usData;
+  jobsData = csvData;
 
-  d3.csv("jobs_2007-2021.csv")
-]).then(([us, zipData, jobsData]) => {
-  const zipLookup = {};
-  zipData.forEach(d => zipLookup[d.zip] = [+d.longitude, +d.latitude]);
+  updateMap(+document.getElementById("slider").value);
 
-  const svg = d3.select("#map");
-  const width = +svg.attr("width");
-  const height = +svg.attr("height");
-
-  const projection = d3.geoAlbersUsa().translate([width / 2, height / 2]).scale(1200);
-  const path = d3.geoPath().projection(projection);
-
-  const states = topojson.feature(us, us.objects.states);
-  svg.append("g")
-    .selectAll("path")
-    .data(states.features)
-    .join("path")
-    .attr("d", path)
-    .attr("fill", "#f0f0f0")
-    .attr("stroke", "#999");
-
-  jobsData.forEach(d => {
-    d.Year = +d.Year;
-    d.Income = +d.Income;
-  });
-
-  const yearSlider = d3.select("#yearSlider");
-  const yearLabel = d3.select("#yearLabel");
-
-  function updateMap(year) {
-    const filtered = jobsData.filter(d => d.Year === year && zipLookup[d.FIPS]);
-    filtered.forEach(d => {
-      d.coords = projection(zipLookup[d.FIPS]);
-    });
-
-    const incomeExtent = d3.extent(filtered, d => d.Income);
-    const colorScale = d3.scaleSequential(d3.interpolateViridis).domain(incomeExtent);
-    const radiusScale = d3.scaleSqrt().domain(incomeExtent).range([2, 10]);
-
-    svg.selectAll("circle").remove();
-
-    svg.append("g")
-      .selectAll("circle")
-      .data(filtered)
-      .join("circle")
-        .attr("cx", d => d.coords[0])
-        .attr("cy", d => d.coords[1])
-        .attr("r", d => radiusScale(d.Income))
-        .attr("fill", d => colorScale(d.Income))
-        .attr("stroke", "#333")
-        .attr("stroke-width", 0.5)
-        .attr("opacity", 0.75)
-      .append("title")
-        .text(d => `${d.County}, ${d.State}\nZIP: ${d.FIPS}\nIncome: $${d.Income}`);
-
-    drawLegend(colorScale, incomeExtent);
-  }
-
-  function drawLegend(colorScale, domain) {
-    const legendWidth = 300;
-    const legendHeight = 12;
-    const canvas = d3.select("#legend").html("")
-      .append("canvas")
-      .attr("width", legendWidth)
-      .attr("height", legendHeight);
-
-    const context = canvas.node().getContext("2d");
-    for (let i = 0; i < legendWidth; ++i) {
-      context.fillStyle = colorScale(domain[0] + (i / legendWidth) * (domain[1] - domain[0]));
-      context.fillRect(i, 0, 1, legendHeight);
-    }
-
-    d3.select("#legend")
-      .append("div")
-      .style("width", legendWidth + "px")
-      .style("display", "flex")
-      .style("justify-content", "space-between")
-      .style("font-size", "12px")
-      .html(`<span>$${domain[0].toFixed(0)}</span><span>$${domain[1].toFixed(0)}</span>`);
-  }
-
-  // Initial draw
-  updateMap(+yearSlider.property("value"));
-
-  // Slider interaction
-  yearSlider.on("input", function() {
+  d3.select("#slider").on("input", function () {
     const year = +this.value;
-    yearLabel.text(year);
+    d3.select("#slider-value").text(year);
     updateMap(year);
   });
 });
+
+function updateMap(year) {
+  const yearData = jobsData.filter(d => d.Year === year);
+  const dataByFIPS = Object.fromEntries(yearData.map(d => [d.FIPS, d]));
+  const incomeExtent = d3.extent(yearData, d => d.Income);
+
+  const colorScale = d3.scaleSequential(d3.interpolateViridis).domain(incomeExtent);
+
+  svg.selectAll("path.county").remove();
+
+  svg.append("g")
+    .selectAll("path.county")
+    .data(topojson.feature(us, us.objects.counties).features)
+    .join("path")
+      .attr("class", "county")
+      .attr("d", path)
+      .attr("fill", d => {
+        const datum = dataByFIPS[d.id];
+        return datum ? colorScale(datum.Income) : "#ccc";
+      })
+      .attr("stroke", "#999")
+      .append("title")
+        .text(d => {
+          const datum = dataByFIPS[d.id];
+          return datum ? `${datum.County}, ${datum.State}\nIncome: $${datum.Income}` : "No data";
+        });
+
+  drawLegend(colorScale, incomeExtent);
+}
+
+function drawLegend(colorScale, domain) {
+  const legendWidth = 300;
+  const legendHeight = 12;
+
+  const canvas = d3.select("#legend").html("")
+    .append("canvas")
+    .attr("width", legendWidth)
+    .attr("height", legendHeight);
+
+  const context = canvas.node().getContext("2d");
+  for (let i = 0; i < legendWidth; ++i) {
+    context.fillStyle = colorScale(domain[0] + (i / legendWidth) * (domain[1] - domain[0]));
+    context.fillRect(i, 0, 1, legendHeight);
+  }
+
+  d3.select("#legend")
+    .append("div")
+    .style("width", legendWidth + "px")
+    .style("display", "flex")
+    .style("justify-content", "space-between")
+    .style("font-size", "12px")
+    .html(`<span>${domain[0].toFixed(0)}</span><span>${domain[1].toFixed(0)}</span>`);
+}
 </script>
 
 </body>
