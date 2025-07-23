@@ -126,8 +126,7 @@ Promise.all([
   })),
   d3.csv("cpi_total.csv", d => ({
     Year: +d.Year,
-    item: +d["Consumer Price Index item"],
-    TotalCPI: +d["Percent change"]
+    TotalCPI: +d.PercentChange
   })),
   d3.csv("cpi_index.csv", d => ({
     Year: +d.Year,
