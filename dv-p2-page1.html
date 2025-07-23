@@ -53,6 +53,8 @@
   <span id="slider-value">2007</span>
 </div>
 
+<svg id="barChart"></svg>
+
 <svg id="map" width="960" height="600"></svg>
 
 <script>
@@ -126,6 +128,96 @@ function updateMap(year) {
 
   drawLegend(colorScale, UnemploymentRateExtent);
   updateAnnotations(year);
+
+  const categoryColors = {
+  "All food": "#4B0082",
+  "Food away from home": "#FF00FF",
+  "Food at home": "#8A2BE2",
+  "Meats, poultry, and fish": "#FF0000",
+  "Meats": "#CD5C5C",
+  "Beef and veal": "#800000",
+  "Pork": "#DC143C",
+  "Other meats": "#FFA07A",
+  "Poultry": "#FF4500",
+  "Fish and seafood": "#FF6347",
+  "Eggs": "#FFD700",
+  "Dairy products": "#FFFF00",
+  "Fats and oils": "#B8860B",
+  "Fruits and vegetables": "#48D1CC",
+  "Fresh fruits and vegetables": "#00FF00",
+  "Fresh fruits": "#00FFFF",
+  "Fresh vegetables": "#228B22",
+  "Processed fruits and vegetables": "#00FA9A",
+  "Sugar and sweets": "#1E90FF",
+  "Cereals and bakery products": "#4169E1",
+  "Nonalcoholic beverages": "#F4A460",
+  "Other foods": "#A52A2A"
+};
+
+let cpiCategoryData = [];
+
+d3.csv("cpi_index.csv", d => ({
+  Year: +d.Year,
+  Category: d.Category,
+  Change: +d.PercentChange
+})).then(data => {
+  cpiCategoryData = data;
+  updateBarChart(+document.getElementById("slider").value);
+});
+
+function updateBarChart(year) {
+  const filtered = cpiCategoryData.filter(d => d.Year === year);
+  const barSvg = d3.select("#barChart");
+  barSvg.selectAll("*").remove();
+
+  const margin = { top: 20, right: 20, bottom: 60, left: 80 };
+  const width = 600 - margin.left - margin.right;
+  const height = 600 - margin.top - margin.bottom;
+
+  const g = barSvg
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  const x = d3.scaleBand()
+    .domain(filtered.map(d => d.Category))
+    .range([0, width])
+    .padding(0.2);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(filtered, d => d.Change)])
+    .nice()
+    .range([height, 0]);
+
+  g.append("g")
+    .call(d3.axisLeft(y));
+
+  g.append("g")
+    .attr("transform", `translate(0,${height})`)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .attr("transform", "rotate(-45)")
+    .style("text-anchor", "end");
+
+  g.selectAll("rect")
+    .data(filtered)
+    .join("rect")
+    .attr("x", d => x(d.Category))
+    .attr("y", d => y(d.Change))
+    .attr("width", x.bandwidth())
+    .attr("height", d => height - y(d.Change))
+    .attr("fill", d => categoryColors[d.Category] || "#ccc");
+}
+
+// Add this to update both map and bar chart on year change
+d3.select("#slider").on("input", function () {
+  const year = +this.value;
+  d3.select("#slider-value").text(year);
+  updateMap(year);
+  updateBarChart(year);
+});
+
 }
 
 function drawLegend(colorScale, domain) {
@@ -163,7 +255,27 @@ function updateAnnotations(year) {
     `Total CPI Increase: ${cpi ? cpi.TotalCPI.toFixed(1) + "%" : "N/A"}`
   );
 }
+
+let currentYear = 2007;
+let maxYear = 2021;
+
+function autoplay() {
+  const interval = setInterval(() => {
+    currentYear++;
+    if (currentYear > maxYear) {
+      clearInterval(interval);
+      return;
+    }
+    document.getElementById("slider").value = currentYear;
+    d3.select("#slider-value").text(currentYear);
+    updateMap(currentYear);
+    updateBarChart(currentYear);
+  }, 2000);
+}
+
+autoplay();
 </script>
 
 </body>
 </html>
+
