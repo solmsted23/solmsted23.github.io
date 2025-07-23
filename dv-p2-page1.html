@@ -9,13 +9,28 @@
     body {
       font-family: sans-serif;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
+
     #legend {
       margin-top: 10px;
     }
+
     #yearSlider {
       margin-top: 20px;
     }
+
+    #annotations {
+      position: absolute;
+      left: 30px;
+      top: 150px;
+      text-align: left;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
     svg {
       display: block;
       margin: auto;
@@ -24,7 +39,12 @@
 </head>
 <body>
 
-<h2>U.S. County Unemployment Rate by Year</h2>
+<h2>Exploration of US Recession Unemployment and CPI Index</h2>
+
+<div id="annotations">
+  <div id="unemploymentText">Total US Unemployment: </div>
+  <div id="cpiText">Total CPI Increase: </div>
+</div>
 
 <div id="legend"></div>
 
@@ -37,15 +57,13 @@
 
 <script>
 const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
-
 const svg = d3.select("#map");
 const width = +svg.attr("width");
 const height = +svg.attr("height");
 const projection = d3.geoAlbersUsa().translate([width / 2, height / 2]).scale(1300);
 const path = d3.geoPath().projection(projection);
 
-let jobsData = [];
-let us = null;
+let jobsData = [], unemploymentTotals = [], cpiTotals = [], us = null;
 
 Promise.all([
   d3.json(mapUrl),
@@ -56,10 +74,20 @@ Promise.all([
     EmploymentStatus: d.EmploymentStatus,
     Year: +d.Year,
     UnemploymentRate: +d.UnemploymentRate
+  })),
+  d3.csv("US_UnemploymentTotals.csv", d => ({
+    Year: +d.Year,
+    TotalUnemployment: +d.TotalUnemployment
+  })),
+  d3.csv("cpi_total.csv", d => ({
+    Year: +d.Year,
+    TotalCPI: +d.TotalCPI
   }))
-]).then(([usData, csvData]) => {
+]).then(([usData, csvData, unemploymentData, cpiData]) => {
   us = usData;
   jobsData = csvData;
+  unemploymentTotals = unemploymentData;
+  cpiTotals = cpiData;
 
   updateMap(+document.getElementById("slider").value);
 
@@ -97,6 +125,7 @@ function updateMap(year) {
         });
 
   drawLegend(colorScale, UnemploymentRateExtent);
+  updateAnnotations(year);
 }
 
 function drawLegend(colorScale, domain) {
@@ -121,6 +150,14 @@ function drawLegend(colorScale, domain) {
     .style("justify-content", "space-between")
     .style("font-size", "12px")
     .html(`<span>${domain[0].toFixed(0)}</span><span>${domain[1].toFixed(0)}</span>`);
+}
+
+function updateAnnotations(year) {
+  const unemployment = unemploymentTotals.find(d => d.Year === year);
+  const cpi = cpiTotals.find(d => d.Year === year);
+
+  d3.select("#unemploymentText").text(`Total US Unemployment: ${unemployment ? unemployment.TotalUnemployment.toLocaleString() : "N/A"}`);
+  d3.select("#cpiText").text(`Total CPI Increase: ${cpi ? cpi.TotalCPI.toFixed(1) + "%" : "N/A"}`);
 }
 </script>
 
