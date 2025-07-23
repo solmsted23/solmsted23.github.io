@@ -131,8 +131,8 @@ Promise.all([
   })),
   d3.csv("cpi_index.csv", d => ({
     Year: +d.Year,
-    Category: d.Category,
-    Change: +d.PercentChange
+    Category: d["Consumer Price Index item"],
+    Change: +d["Percent change"]
   }))
 ]).then(([usData, jobData, unemploymentData, cpiData, cpiIndexData]) => {
   us = usData;
