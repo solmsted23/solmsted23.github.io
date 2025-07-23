@@ -6,51 +6,54 @@
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://unpkg.com/topojson@3"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0;
-    }
+      body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+  }
 
-    h2 {
-      text-align: center;
-    }
+  h2 {
+    text-align: center;
+  }
 
-    #content {
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      align-items: flex-start;
-    }
+  #content {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+  }
 
-    #barChart {
-      width: 600px;
-      height: 600px;
-    }
+  #barChart {
+    width: 700px;
+    height: 600px;
+  }
 
-    #map {
-      width: 960px;
-      height: 600px;
-    }
+  #map {
+    width: 960px;
+    height: 600px;
+  }
 
-    #yearSlider {
-      text-align: center;
-      margin-top: 20px;
-    }
+  #yearSlider {
+    text-align: center;
+    margin-top: 20px;
+  }
 
-    #legend {
-      text-align: center;
-      margin-top: 10px;
-    }
+  #legend {
+    text-align: center;
+    margin-top: 10px;
+  }
 
-    #annotations {
-      position: absolute;
-      left: 30px;
-      top: 150px;
-      text-align: left;
-      font-size: 16px;
-      line-height: 1.5;
-    }
+  #annotations {
+    position: absolute;
+    left: 30px;
+    top: 100px;
+    text-align: left;
+    font-size: 16px;
+    line-height: 1.5;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 10px;
+    border-radius: 5px;
+  }
   </style>
 </head>
 <body>
@@ -60,7 +63,6 @@
 <div id="annotations">
   <div id="unemploymentText">Total US Unemployment: </div>
   <div id="cpiText">Total CPI Increase: </div>
-    <svg id="barChart"></svg>
 </div>
 
 <div id="legend"></div>
@@ -72,6 +74,7 @@
 
 <div id="content">
   <svg id="map"></svg>
+  <svg id="barChart"></svg>
 </div>
 
 <script>
@@ -110,6 +113,8 @@ const categoryColors = {
   "Other foods": "#A52A2A"
 };
 
+let globalMaxChange = 0;
+
 Promise.all([
   d3.json(mapUrl),
   d3.csv("jobs_2007-2021_2.csv", d => ({
@@ -139,6 +144,7 @@ Promise.all([
   unemploymentTotals = unemploymentData;
   cpiTotals = cpiData;
   cpiCategoryData = cpiIndexData;
+  globalMaxChange = d3.max(cpiCategoryData, d => d.Change);
 
   const year = +document.getElementById("slider").value;
   updateMap(year);
@@ -186,13 +192,13 @@ function updateBarChart(year) {
   const data = cpiCategoryData.filter(d => d.Year === year);
   barSvg.selectAll("*").remove();
 
-  const margin = { top: 20, right: 20, bottom: 90, left: 80 };
-  const width = 600 - margin.left - margin.right;
+  const margin = { top: 30, right: 30, bottom: 100, left: 80 };
+  const width = 700 - margin.left - margin.right;
   const height = 600 - margin.top - margin.bottom;
 
   const g = barSvg
-    .attr("width", 600)
-    .attr("height", 600)
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -202,7 +208,7 @@ function updateBarChart(year) {
     .padding(0.2);
 
   const y = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.Change)])
+    .domain([0, globalMaxChange]) // 🔹 Use consistent domain
     .nice()
     .range([height, 0]);
 
