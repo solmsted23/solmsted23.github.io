@@ -60,6 +60,7 @@
 <div id="annotations">
   <div id="unemploymentText">Total US Unemployment: </div>
   <div id="cpiText">Total CPI Increase: </div>
+    <svg id="barChart"></svg>
 </div>
 
 <div id="legend"></div>
@@ -70,7 +71,6 @@
 </div>
 
 <div id="content">
-  <svg id="barChart"></svg>
   <svg id="map"></svg>
 </div>
 
@@ -126,7 +126,8 @@ Promise.all([
   })),
   d3.csv("cpi_total.csv", d => ({
     Year: +d.Year,
-    TotalCPI: +d.PercentChange
+    item: +d["Consumer Price Index item"],
+    TotalCPI: +d["Percent change"]
   })),
   d3.csv("cpi_index.csv", d => ({
     Year: +d.Year,
@@ -187,12 +188,12 @@ function updateBarChart(year) {
   barSvg.selectAll("*").remove();
 
   const margin = { top: 20, right: 20, bottom: 90, left: 80 };
-  const width = 600 - margin.left - margin.right;
-  const height = 600 - margin.top - margin.bottom;
+  const width = 300 - margin.left - margin.right;
+  const height = 300 - margin.top - margin.bottom;
 
   const g = barSvg
-    .attr("width", 600)
-    .attr("height", 600)
+    .attr("width", 300)
+    .attr("height", 300)
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
