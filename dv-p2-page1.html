@@ -92,7 +92,7 @@ function updateMap(year) {
       .append("title")
         .text(d => {
           const datum = dataByFIPS[d.id];
-          return datum ? `${datum.County}, ${datum.State}\nUnemploymentRate: $${datum.UnemploymentRate}` : "No data";
+          return datum ? `${datum.County}, ${datum.State}\nUnemploymentRate: ${datum.UnemploymentRate}%` : "No data";
         });
 
   drawLegend(colorScale, UnemploymentRateExtent);
