@@ -74,7 +74,7 @@ function updateMap(year) {
   const dataByFIPS = Object.fromEntries(yearData.map(d => [d.FIPS, d]));
   const UnemploymentRateExtent = d3.extent(yearData, d => d.UnemploymentRate);
 
-  const colorScale = d3.scaleSequential(d3.interpolateViridis).domain(UnemploymentRateExtent);
+  const colorScale = d3.scaleSequential(d3.interpolateViridis).domain(UnemploymentRateExtent.reverse());
 
   svg.selectAll("path.county").remove();
 
