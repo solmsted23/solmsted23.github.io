@@ -25,7 +25,32 @@
     const svg = d3.select("svg");
     const width = +svg.attr("width");
     const height = +svg.attr("height");
-    const margin = { top: 40, right: 150, bottom: 60, left: 60 };
+    const margin = { top: 40, right: 200, bottom: 60, left: 60 };
+
+    const categoryColors = {
+        "All food": "#999",
+        "Food away from home": "#999",
+        "Food at home": "#999",
+        "Meats, poultry, and fish": "#999",
+        "Meats": "#999",
+        "Beef and veal": "#999",
+        "Pork": "#999",
+        "Other meats": "#999",
+        "Poultry": "#999",
+        "Fish and seafood": "#999",
+        "Eggs": "#999",
+        "Dairy products": "#999",
+        "Fats and oils": "#999",
+        "Fruits and vegetables": "#999",
+        "Fresh fruits and vegetables": "#999",
+        "Fresh fruits": "#999",
+        "Fresh vegetables": "#999",
+        "Processed fruits and vegetables": "#999",
+        "Sugar and sweets": "#999",
+        "Cereals and bakery products": "#999",
+        "Nonalcoholic beverages": "#999",
+        "Other foods": "#999"
+    };
 
     d3.csv("cpi_index.csv").then(data => {
       data.forEach(d => {
@@ -45,20 +70,14 @@
         .nice()
         .range([height - margin.bottom, margin.top]);
 
-      const color = d3.scaleOrdinal()
-        .domain(categories)
-        .range(d3.schemeTableau10);
-
       const line = d3.line()
         .x(d => x(d.Year))
         .y(d => y(d["Percent change"]));
 
-      const groupedData = categories.map(cat => {
-        return {
-          category: cat,
-          values: data.filter(d => d.Category === cat).sort((a, b) => a.Year - b.Year)
-        };
-      });
+      const groupedData = categories.map(cat => ({
+        category: cat,
+        values: data.filter(d => d.Category === cat).sort((a, b) => a.Year - b.Year)
+      }));
 
       svg.append("g")
         .attr("transform", `translate(0,${height - margin.bottom})`)
@@ -72,24 +91,22 @@
         .data(groupedData)
         .join("path")
         .attr("class", "line")
-        .attr("fill", "none")
-        .attr("stroke", d => color(d.category))
+        .attr("stroke", d => categoryColors[d.category] || "#999") // fallback color
         .attr("d", d => line(d.values));
 
-      // Legend
       const legend = svg.append("g")
-        .attr("transform", `translate(${width - margin.right + 10},${margin.top})`);
+        .attr("transform", `translate(${width - margin.right + 20},${margin.top})`);
 
-      groupedData.forEach((d, i) => {
+      categories.forEach((cat, i) => {
         const g = legend.append("g").attr("transform", `translate(0,${i * 20})`);
         g.append("rect")
           .attr("width", 15)
           .attr("height", 15)
-          .attr("fill", color(d.category));
+          .attr("fill", categoryColors[cat] || "#999");
         g.append("text")
           .attr("x", 20)
           .attr("y", 12)
-          .text(d.category)
+          .text(cat)
           .attr("font-size", "12px");
       });
     });

@@ -77,3 +77,196 @@
   </script>
 </body>
 </html>
+
+<!-- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Employment Line Graphs by FIPS</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    svg {
+      margin-bottom: 40px;
+    }
+    .chart-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Upload jobs.txt to Plot Line Graphs by FIPS</h2>
+<input type="file" id="fileInput" accept=".txt,.csv">
+<div id="charts"></div>
+
+<script>
+document.getElementById("fileInput").addEventListener("change", function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const raw = e.target.result;
+    // Try both tab- and comma-separated parsing
+    const isTabDelimited = raw.includes("\t");
+    const data = d3.dsvFormat(isTabDelimited ? "\t" : ",").parse(raw, d => ({
+      FIPS: d.FIPS,
+      State: d.State,
+      County: d.County,
+      EmploymentStatus: d.EmploymentStatus,
+      Year: +d.Year,
+      Value: +d.Value
+    }));
+
+    drawLineCharts(data);
+  };
+  reader.readAsText(file);
+});
+
+function drawLineCharts(data) {
+  const grouped = d3.group(data, d => d.FIPS);
+
+  const container = d3.select("#charts").html("");
+
+  grouped.forEach((values, fips) => {
+    values.sort((a, b) => d3.ascending(a.Year, b.Year));
+
+    const margin = {top: 20, right: 20, bottom: 30, left: 50};
+    const width = 600 - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    const x = d3.scaleLinear()
+      .domain(d3.extent(values, d => d.Year))
+      .range([0, width]);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(values, d => d.Value)]).nice()
+      .range([height, 0]);
+
+    const line = d3.line()
+      .x(d => x(d.Year))
+      .y(d => y(d.Value));
+
+    container.append("div")
+      .attr("class", "chart-title")
+      .text(`FIPS: ${fips} (${values[0].County}, ${values[0].State})`);
+
+    const svg = container.append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    svg.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format("d")));
+
+    svg.append("g")
+      .call(d3.axisLeft(y));
+
+    svg.append("path")
+      .datum(values)
+      .attr("fill", "none")
+      .attr("stroke", "steelblue")
+      .attr("stroke-width", 2)
+      .attr("d", line);
+
+    // Add dots
+    svg.selectAll("circle")
+      .data(values)
+      .join("circle")
+      .attr("cx", d => x(d.Year))
+      .attr("cy", d => y(d.Value))
+      .attr("r", 3)
+      .attr("fill", "darkblue")
+      .append("title")
+      .text(d => `Year: ${d.Year}, Value: ${d.Value}`);
+  });
+}
+</script>
+
+</body>
+</html> -->
+
+
+
+<!DOCTYPE html>
+
+<!-- <html> -->
+
+<!-- <meta charset="utf-8">
+
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v4.js"></script>
+
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz"></div>
+
+<script>
+// set the dimensions and margins of the graph
+var margin = {top: 10, right: 30, bottom: 30, left: 60},
+    width = 460 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom;
+
+// append the svg object to the body of the page
+var svg = d3.select("#my_dataviz")
+  .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+//Read the data
+d3.csv("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/connectedscatter.csv",
+  // When reading the csv, I must format variables:
+  function(d){
+    return { date : d3.timeParse("%Y-%m-%d")(d.date), value : d.value }
+  },
+  // Now I can use this dataset:
+  function(data) {
+    // Add X axis --> it is a date format
+    var x = d3.scaleTime()
+      .domain(d3.extent(data, function(d) { return d.date; }))
+      .range([ 0, width ]);
+    svg.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x));
+    // Add Y axis
+    var y = d3.scaleLinear()
+      .domain( [8000, 9200])
+      .range([ height, 0 ]);
+    svg.append("g")
+      .call(d3.axisLeft(y));
+    // Add the line
+    svg.append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", "#69b3a2")
+      .attr("stroke-width", 1.5)
+      .attr("d", d3.line()
+        .x(function(d) { return x(d.date) })
+        .y(function(d) { return y(d.value) })
+        )
+    // Add the points
+    svg
+      .append("g")
+      .selectAll("dot")
+      .data(data)
+      .enter()
+      .append("circle")
+        .attr("cx", function(d) { return x(d.date) } )
+        .attr("cy", function(d) { return y(d.value) } )
+        .attr("r", 5)
+        .attr("fill", "#69b3a2")
+})
+</script> -->
+<!-- </html> -->
+

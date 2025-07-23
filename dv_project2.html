@@ -1,73 +1,154 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CPI Line Chart with Slider</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .line {
+      fill: none;
+      stroke-width: 2px;
+    }
+    .axis-label {
+      font-size: 12px;
+    }
+    #sliderContainer {
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Consumer Price Index - Percent Change by Year</h2>
+  <svg width="800" height="500"></svg>
+  <div id="sliderContainer">
+    <input type="range" id="yearSlider" min="2000" max="2023" step="1" value="2010">
+    <span id="selectedYear">2010</span>
+  </div>
 
-<!-- <html> -->
+  <script>
+    const svg = d3.select("svg");
+    const width = +svg.attr("width");
+    const height = +svg.attr("height");
+    const margin = { top: 40, right: 200, bottom: 60, left: 60 };
 
-<meta charset="utf-8">
+    const categoryColors = {
+      "All food": "#999",
+      "Food away from home": "#999",
+      "Food at home": "#999",
+      "Meats, poultry, and fish": "#999",
+      "Meats": "#999",
+      "Beef and veal": "#999",
+      "Pork": "#999",
+      "Other meats": "#999",
+      "Poultry": "#999",
+      "Fish and seafood": "#999",
+      "Eggs": "#999",
+      "Dairy products": "#999",
+      "Fats and oils": "#999",
+      "Fruits and vegetables": "#999",
+      "Fresh fruits and vegetables": "#999",
+      "Fresh fruits": "#999",
+      "Fresh vegetables": "#999",
+      "Processed fruits and vegetables": "#999",
+      "Sugar and sweets": "#999",
+      "Cereals and bakery products": "#999",
+      "Nonalcoholic beverages": "#999",
+      "Other foods": "#999"
+    };
 
-<!-- Load d3.js -->
-<script src="https://d3js.org/d3.v4.js"></script>
+    d3.csv("cpi_index.csv").then(data => {
+      data.forEach(d => {
+        d.Year = +d.Year;
+        d.Category = d["Consumer Price Index item"];
+        d["Percent change"] = +d["Percent change"];
+      });
 
-<!-- Create a div where the graph will take place -->
-<div id="my_dataviz"></div>
+      const categories = Array.from(new Set(data.map(d => d.Category)));
+      const years = Array.from(new Set(data.map(d => d.Year))).sort((a, b) => a - b);
 
-<script>
-// set the dimensions and margins of the graph
-var margin = {top: 10, right: 30, bottom: 30, left: 60},
-    width = 460 - margin.left - margin.right,
-    height = 400 - margin.top - margin.bottom;
+      // Update slider bounds
+      d3.select("#yearSlider")
+        .attr("min", d3.min(years))
+        .attr("max", d3.max(years));
 
-// append the svg object to the body of the page
-var svg = d3.select("#my_dataviz")
-  .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform",
-          "translate(" + margin.left + "," + margin.top + ")");
+      const x = d3.scaleLinear()
+        .domain(d3.extent(years))
+        .range([margin.left, width - margin.right]);
 
-//Read the data
-d3.csv("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/connectedscatter.csv",
-  // When reading the csv, I must format variables:
-  function(d){
-    return { date : d3.timeParse("%Y-%m-%d")(d.date), value : d.value }
-  },
-  // Now I can use this dataset:
-  function(data) {
-    // Add X axis --> it is a date format
-    var x = d3.scaleTime()
-      .domain(d3.extent(data, function(d) { return d.date; }))
-      .range([ 0, width ]);
-    svg.append("g")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x));
-    // Add Y axis
-    var y = d3.scaleLinear()
-      .domain( [8000, 9200])
-      .range([ height, 0 ]);
-    svg.append("g")
-      .call(d3.axisLeft(y));
-    // Add the line
-    svg.append("path")
-      .datum(data)
-      .attr("fill", "none")
-      .attr("stroke", "#69b3a2")
-      .attr("stroke-width", 1.5)
-      .attr("d", d3.line()
-        .x(function(d) { return x(d.date) })
-        .y(function(d) { return y(d.value) })
-        )
-    // Add the points
-    svg
-      .append("g")
-      .selectAll("dot")
-      .data(data)
-      .enter()
-      .append("circle")
-        .attr("cx", function(d) { return x(d.date) } )
-        .attr("cy", function(d) { return y(d.value) } )
-        .attr("r", 5)
-        .attr("fill", "#69b3a2")
-})
-</script>
-<!-- </html> -->
+      const y = d3.scaleLinear()
+        .domain([d3.min(data, d => d["Percent change"]), d3.max(data, d => d["Percent change"])])
+        .nice()
+        .range([height - margin.bottom, margin.top]);
 
+      const line = d3.line()
+        .x(d => x(d.Year))
+        .y(d => y(d["Percent change"]));
+
+      svg.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+
+      svg.append("g")
+        .attr("class", "y-axis")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y));
+
+      // Legend
+      const legend = svg.append("g")
+        .attr("transform", `translate(${width - margin.right + 20},${margin.top})`);
+
+      categories.forEach((cat, i) => {
+        const g = legend.append("g").attr("transform", `translate(0,${i * 20})`);
+        g.append("rect")
+          .attr("width", 15)
+          .attr("height", 15)
+          .attr("fill", categoryColors[cat] || "#999");
+        g.append("text")
+          .attr("x", 20)
+          .attr("y", 12)
+          .text(cat)
+          .attr("font-size", "12px");
+      });
+
+      const updateLines = (selectedYear) => {
+        d3.select("#selectedYear").text(selectedYear);
+
+        const filteredData = categories.map(cat => {
+          return {
+            category: cat,
+            values: data
+              .filter(d => d.Category === cat && [selectedYear - 1, selectedYear, selectedYear + 1].includes(d.Year))
+              .sort((a, b) => a.Year - b.Year)
+          };
+        });
+
+        const lines = svg.selectAll(".line")
+          .data(filteredData, d => d.category);
+
+        lines.join(
+          enter => enter.append("path")
+            .attr("class", "line")
+            .attr("stroke", d => categoryColors[d.category] || "#999")
+            .attr("d", d => line(d.values)),
+          update => update
+            .attr("d", d => line(d.values)),
+          exit => exit.remove()
+        );
+      };
+
+      // Initial draw
+      updateLines(+d3.select("#yearSlider").property("value"));
+
+      // Slider listener
+      d3.select("#yearSlider").on("input", function () {
+        updateLines(+this.value);
+      });
+    });
+  </script>
+</body>
+</html>
