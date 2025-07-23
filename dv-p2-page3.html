@@ -2,17 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CPI Grouped Bar Chart</title>
+  <title>CPI Line Chart</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     body {
       font-family: sans-serif;
     }
-    .bar {
-      fill-opacity: 0.7;
-    }
-    .bar:hover {
-      fill-opacity: 1;
+    .line {
+      fill: none;
+      stroke-width: 2px;
     }
     .axis-label {
       font-size: 12px;
@@ -27,77 +25,71 @@
     const svg = d3.select("svg");
     const width = +svg.attr("width");
     const height = +svg.attr("height");
-    const margin = { top: 40, right: 30, bottom: 60, left: 50 };
+    const margin = { top: 40, right: 150, bottom: 60, left: 60 };
 
     d3.csv("cpi_index.csv").then(data => {
       data.forEach(d => {
-        d["Percent change"] = +d["Percent change"];
-        d.Year = d.Year;
+        d.Year = +d.Year;
         d.Category = d["Consumer Price Index item"];
+        d["Percent change"] = +d["Percent change"];
       });
 
       const categories = Array.from(new Set(data.map(d => d.Category)));
-      const years = Array.from(new Set(data.map(d => d.Year)));
 
-      const x0 = d3.scaleBand()
-        .domain(categories)
-        .range([margin.left, width - margin.right])
-        .paddingInner(0.2);
-
-      const x1 = d3.scaleBand()
-        .domain(years)
-        .range([0, x0.bandwidth()])
-        .padding(0.05);
+      const x = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.Year))
+        .range([margin.left, width - margin.right]);
 
       const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d["Percent change"])])
+        .domain([d3.min(data, d => d["Percent change"]), d3.max(data, d => d["Percent change"])])
         .nice()
         .range([height - margin.bottom, margin.top]);
 
       const color = d3.scaleOrdinal()
-        .domain(years)
+        .domain(categories)
         .range(d3.schemeTableau10);
 
-      svg.append("g")
-        .selectAll("g")
-        .data(categories)
-        .join("g")
-          .attr("transform", d => `translate(${x0(d)},0)`)
-        .selectAll("rect")
-        .data(d => data.filter(item => item.Category === d))
-        .join("rect")
-          .attr("class", "bar")
-          .attr("x", d => x1(d.Year))
-          .attr("y", d => y(d["Percent change"]))
-          .attr("width", x1.bandwidth())
-          .attr("height", d => y(0) - y(d["Percent change"]))
-          .attr("fill", d => color(d.Year));
+      const line = d3.line()
+        .x(d => x(d.Year))
+        .y(d => y(d["Percent change"]));
+
+      const groupedData = categories.map(cat => {
+        return {
+          category: cat,
+          values: data.filter(d => d.Category === cat).sort((a, b) => a.Year - b.Year)
+        };
+      });
 
       svg.append("g")
         .attr("transform", `translate(0,${height - margin.bottom})`)
-        .call(d3.axisBottom(x0))
-        .selectAll("text")
-          .attr("transform", "rotate(-40)")
-          .style("text-anchor", "end");
+        .call(d3.axisBottom(x).tickFormat(d3.format("d")));
 
       svg.append("g")
         .attr("transform", `translate(${margin.left},0)`)
-        .call(d3.axisLeft(y).ticks(null, "s"));
+        .call(d3.axisLeft(y));
+
+      svg.selectAll(".line")
+        .data(groupedData)
+        .join("path")
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", d => color(d.category))
+        .attr("d", d => line(d.values));
 
       // Legend
       const legend = svg.append("g")
-        .attr("transform", `translate(${width - margin.right - 100},${margin.top})`);
+        .attr("transform", `translate(${width - margin.right + 10},${margin.top})`);
 
-      years.forEach((year, i) => {
+      groupedData.forEach((d, i) => {
         const g = legend.append("g").attr("transform", `translate(0,${i * 20})`);
         g.append("rect")
           .attr("width", 15)
           .attr("height", 15)
-          .attr("fill", color(year));
+          .attr("fill", color(d.category));
         g.append("text")
           .attr("x", 20)
           .attr("y", 12)
-          .text(year)
+          .text(d.category)
           .attr("font-size", "12px");
       });
     });

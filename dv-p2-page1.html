@@ -25,7 +25,6 @@
 <body>
 
 <h2>U.S. County Unemployment Rate by Year</h2>
-<svg id="map" width="960" height="600"></svg>
 
 <div id="yearSlider">
   <input type="range" id="slider" min="2007" max="2021" step="1" value="2007">
@@ -33,6 +32,8 @@
 </div>
 
 <div id="legend"></div>
+
+<svg id="map" width="960" height="600"></svg>
 
 <script>
 const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
