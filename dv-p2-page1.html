@@ -156,8 +156,12 @@ function updateAnnotations(year) {
   const unemployment = unemploymentTotals.find(d => d.Year === year);
   const cpi = cpiTotals.find(d => d.Year === year);
 
-  d3.select("#unemploymentText").text(`Total US Unemployment: ${unemployment ? unemployment.UnemploymentRate.toLocaleString() : "N/A"}`);
-  d3.select("#cpiText").text(`Total CPI Increase: ${cpi ? cpi.PercentChange.toFixed(1) + "%" : "N/A"}`);
+  d3.select("#unemploymentText").text(
+    `Total US Unemployment: ${unemployment ? unemployment.TotalUnemployment.toLocaleString() : "N/A"}`
+  );
+  d3.select("#cpiText").text(
+    `Total CPI Increase: ${cpi ? cpi.TotalCPI.toFixed(1) + "%" : "N/A"}`
+  );
 }
 </script>
 
