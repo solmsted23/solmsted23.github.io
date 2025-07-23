@@ -187,12 +187,12 @@ function updateBarChart(year) {
   barSvg.selectAll("*").remove();
 
   const margin = { top: 20, right: 20, bottom: 90, left: 80 };
-  const width = 300 - margin.left - margin.right;
-  const height = 300 - margin.top - margin.bottom;
+  const width = 600 - margin.left - margin.right;
+  const height = 600 - margin.top - margin.bottom;
 
   const g = barSvg
-    .attr("width", 300)
-    .attr("height", 300)
+    .attr("width", 600)
+    .attr("height", 600)
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
