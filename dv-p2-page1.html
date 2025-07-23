@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>County-Level Income Choropleth</title>
+  <title>County-Level Unemployment Rate Choropleth</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://unpkg.com/topojson@3"></script>
   <style>
@@ -24,7 +24,7 @@
 </head>
 <body>
 
-<h2>U.S. County Income by Year</h2>
+<h2>U.S. County Unemployment Rate by Year</h2>
 <svg id="map" width="960" height="600"></svg>
 
 <div id="yearSlider">
@@ -48,13 +48,13 @@ let us = null;
 
 Promise.all([
   d3.json(mapUrl),
-  d3.csv("jobs_2007-2021.csv", d => ({
+  d3.csv("jobs_2007-2021_2.csv", d => ({
     FIPS: d.FIPS.padStart(5, '0'),
     State: d.State,
     County: d.County,
     EmploymentStatus: d.EmploymentStatus,
     Year: +d.Year,
-    Income: +d.Income
+    UnemploymentRate: +d.UnemploymentRate
   }))
 ]).then(([usData, csvData]) => {
   us = usData;
@@ -72,9 +72,9 @@ Promise.all([
 function updateMap(year) {
   const yearData = jobsData.filter(d => d.Year === year);
   const dataByFIPS = Object.fromEntries(yearData.map(d => [d.FIPS, d]));
-  const incomeExtent = d3.extent(yearData, d => d.Income);
+  const UnemploymentRateExtent = d3.extent(yearData, d => d.UnemploymentRate);
 
-  const colorScale = d3.scaleSequential(d3.interpolateViridis).domain(incomeExtent);
+  const colorScale = d3.scaleSequential(d3.interpolateViridis).domain(UnemploymentRateExtent);
 
   svg.selectAll("path.county").remove();
 
@@ -86,16 +86,16 @@ function updateMap(year) {
       .attr("d", path)
       .attr("fill", d => {
         const datum = dataByFIPS[d.id];
-        return datum ? colorScale(datum.Income) : "#ccc";
+        return datum ? colorScale(datum.UnemploymentRate) : "#ccc";
       })
       .attr("stroke", "#999")
       .append("title")
         .text(d => {
           const datum = dataByFIPS[d.id];
-          return datum ? `${datum.County}, ${datum.State}\nIncome: $${datum.Income}` : "No data";
+          return datum ? `${datum.County}, ${datum.State}\nUnemploymentRate: $${datum.UnemploymentRate}` : "No data";
         });
 
-  drawLegend(colorScale, incomeExtent);
+  drawLegend(colorScale, UnemploymentRateExtent);
 }
 
 function drawLegend(colorScale, domain) {
