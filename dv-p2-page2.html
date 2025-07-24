@@ -2,153 +2,152 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CPI Line Chart with Slider</title>
+  <title>Recession Comparison</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson@3"></script>
   <style>
     body {
       font-family: sans-serif;
+      margin: 0;
+      padding: 0;
     }
-    .line {
-      fill: none;
-      stroke-width: 2px;
-    }
-    .axis-label {
-      font-size: 12px;
-    }
-    #sliderContainer {
+    h2 {
       text-align: center;
-      margin-top: 20px;
+    }
+    .section {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      margin: 20px;
+    }
+    .panel {
+      margin: 10px;
+    }
+    svg {
+      border: 1px solid #ccc;
+    }
+    #legend {
+      text-align: center;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h2>Consumer Price Index - Percent Change by Year</h2>
-  <svg width="800" height="500"></svg>
-  <div id="sliderContainer">
-    <input type="range" id="yearSlider" min="2000" max="2023" step="1" value="2010">
-    <span id="selectedYear">2010</span>
+<h2>Comparing US Unemployment and CPI (2008-2010 vs 2019-2021)</h2>
+<div id="legend"></div>
+<div class="section">
+  <div class="panel">
+    <h3>2008 - 2010</h3>
+    <svg id="mapLeft" width="600" height="400"></svg>
+    <svg id="barLeft" width="600" height="400"></svg>
   </div>
+  <div class="panel">
+    <h3>2019 - 2021</h3>
+    <svg id="mapRight" width="600" height="400"></svg>
+    <svg id="barRight" width="600" height="400"></svg>
+  </div>
+</div>
+<script>
+const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
+const yearsLeft = [2008, 2009, 2010];
+const yearsRight = [2019, 2020, 2021];
 
-  <script>
-    const svg = d3.select("svg");
-    const width = +svg.attr("width");
-    const height = +svg.attr("height");
-    const margin = { top: 40, right: 200, bottom: 60, left: 60 };
+const categoryColors = {
+  "All food": "#999", "Food away from home": "#999", "Food at home": "#999",
+  "Meats, poultry, and fish": "#999", "Meats": "#999", "Beef and veal": "#999",
+  "Pork": "#999", "Other meats": "#999", "Poultry": "#999", "Fish and seafood": "#999",
+  "Eggs": "#999", "Dairy products": "#999", "Fats and oils": "#999",
+  "Fruits and vegetables": "#999", "Fresh fruits and vegetables": "#999",
+  "Fresh fruits": "#999", "Fresh vegetables": "#999",
+  "Processed fruits and vegetables": "#999", "Sugar and sweets": "#999",
+  "Cereals and bakery products": "#999", "Nonalcoholic beverages": "#999",
+  "Other foods": "#999"
+};
 
-    const categoryColors = {
-      "All food": "#4B0082",
-      "Food away from home": "#FF00FF",
-      "Food at home": "#8A2BE2",
-      "Meats, poultry, and fish": "#FF0000",
-      "Meats": "#CD5C5C",
-      "Beef and veal": "#800000",
-      "Pork": "#DC143C",
-      "Other meats": "#FFA07A",
-      "Poultry": "#FF4500",
-      "Fish and seafood": "#FF6347",
-      "Eggs": "#FFD700",
-      "Dairy products": "#FFFF00",
-      "Fats and oils": "#B8860B",
-      "Fruits and vegetables": "#48D1CC",
-      "Fresh fruits and vegetables": "#00FF00",
-      "Fresh fruits": "#00FFFF",
-      "Fresh vegetables": "#228B22",
-      "Processed fruits and vegetables": "#00FA9A",
-      "Sugar and sweets": "#1E90FF",
-      "Cereals and bakery products": "	#4169E1",
-      "Nonalcoholic beverages": "#F4A460",
-      "Other foods": "#A52A2A"
-    };
+Promise.all([
+  d3.json(mapUrl),
+  d3.csv("jobs_2007-2021_2.csv", d => ({
+    FIPS: d.FIPS.padStart(5, '0'),
+    Year: +d.Year,
+    UnemploymentRate: +d.UnemploymentRate
+  })),
+  d3.csv("cpi_index.csv", d => ({
+    Year: +d.Year,
+    Category: d["Consumer Price Index item"],
+    Change: +d["Percent change"]
+  }))
+]).then(([us, jobData, cpiData]) => {
+  const maxChange = d3.max(cpiData, d => d.Change);
 
-    d3.csv("cpi_index.csv").then(data => {
-      data.forEach(d => {
-        d.Year = +d.Year;
-        d.Category = d["Consumer Price Index item"];
-        d["Percent change"] = +d["Percent change"];
-      });
+  drawPanel("Left", yearsLeft, us, jobData, cpiData, maxChange);
+  drawPanel("Right", yearsRight, us, jobData, cpiData, maxChange);
+});
 
-      const categories = Array.from(new Set(data.map(d => d.Category)));
-      const years = Array.from(new Set(data.map(d => d.Year))).sort((a, b) => a - b);
+function drawPanel(side, years, us, jobData, cpiData, maxChange) {
+  let yearIndex = 0;
+  const mapSvg = d3.select(`#map${side}`);
+  const barSvg = d3.select(`#bar${side}`);
+  const width = 600, height = 400;
+  const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(800);
+  const path = d3.geoPath().projection(projection);
 
-      // Update slider bounds
-      d3.select("#yearSlider")
-        .attr("min", d3.min(years))
-        .attr("max", d3.max(years));
+  const colorScale = d3.scaleSequential(d3.interpolateViridis)
+    .domain(d3.extent(jobData, d => d.UnemploymentRate).reverse());
 
-      const x = d3.scaleLinear()
-        .domain(d3.extent(years))
-        .range([margin.left, width - margin.right]);
+  function render(year) {
+    const yearJobs = jobData.filter(d => d.Year === year);
+    const dataByFIPS = Object.fromEntries(yearJobs.map(d => [d.FIPS, d.UnemploymentRate]));
+    const counties = topojson.feature(us, us.objects.counties).features;
 
-      const y = d3.scaleLinear()
-        .domain([d3.min(data, d => d["Percent change"]), d3.max(data, d => d["Percent change"])])
-        .nice()
-        .range([height - margin.bottom, margin.top]);
+    mapSvg.selectAll("*").remove();
+    mapSvg.append("g")
+      .selectAll("path")
+      .data(counties)
+      .join("path")
+      .attr("d", path)
+      .attr("fill", d => {
+        const val = dataByFIPS[d.id];
+        return val !== undefined ? colorScale(val) : "#ccc";
+      })
+      .attr("stroke", "#fff");
 
-      const line = d3.line()
-        .x(d => x(d.Year))
-        .y(d => y(d["Percent change"]));
+    const cpi = cpiData.filter(d => d.Year === year);
+    const margin = {top: 20, right: 20, bottom: 80, left: 50};
+    const bw = width - margin.left - margin.right;
+    const bh = height - margin.top - margin.bottom;
 
-      svg.append("g")
-        .attr("class", "x-axis")
-        .attr("transform", `translate(0,${height - margin.bottom})`)
-        .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+    barSvg.selectAll("*").remove();
+    const g = barSvg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-      svg.append("g")
-        .attr("class", "y-axis")
-        .attr("transform", `translate(${margin.left},0)`)
-        .call(d3.axisLeft(y));
+    const x = d3.scaleBand().domain(cpi.map(d => d.Category)).range([0, bw]).padding(0.2);
+    const y = d3.scaleLinear().domain([0, maxChange]).range([bh, 0]);
 
-      // Legend
-      const legend = svg.append("g")
-        .attr("transform", `translate(${width - margin.right + 20},${margin.top})`);
+    g.append("g").call(d3.axisLeft(y));
+    g.append("g")
+      .attr("transform", `translate(0,${bh})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .attr("transform", "rotate(-45)")
+      .style("text-anchor", "end");
 
-      categories.forEach((cat, i) => {
-        const g = legend.append("g").attr("transform", `translate(0,${i * 20})`);
-        g.append("rect")
-          .attr("width", 15)
-          .attr("height", 15)
-          .attr("fill", categoryColors[cat] || "#999");
-        g.append("text")
-          .attr("x", 20)
-          .attr("y", 12)
-          .text(cat)
-          .attr("font-size", "12px");
-      });
+    g.selectAll("rect")
+      .data(cpi)
+      .join("rect")
+      .attr("x", d => x(d.Category))
+      .attr("y", d => y(d.Change))
+      .attr("width", x.bandwidth())
+      .attr("height", d => bh - y(d.Change))
+      .attr("fill", d => categoryColors[d.Category] || "#ccc");
+  }
 
-      const updateLines = (selectedYear) => {
-        d3.select("#selectedYear").text(selectedYear);
+  render(years[0]);
 
-        const filteredData = categories.map(cat => {
-          return {
-            category: cat,
-            values: data
-              .filter(d => d.Category === cat && [selectedYear - 1, selectedYear, selectedYear + 1].includes(d.Year))
-              .sort((a, b) => a.Year - b.Year)
-          };
-        });
-
-        const lines = svg.selectAll(".line")
-          .data(filteredData, d => d.category);
-
-        lines.join(
-          enter => enter.append("path")
-            .attr("class", "line")
-            .attr("stroke", d => categoryColors[d.category] || "#999")
-            .attr("d", d => line(d.values)),
-          update => update
-            .attr("d", d => line(d.values)),
-          exit => exit.remove()
-        );
-      };
-
-      // Initial draw
-      updateLines(+d3.select("#yearSlider").property("value"));
-
-      // Slider listener
-      d3.select("#yearSlider").on("input", function () {
-        updateLines(+this.value);
-      });
-    });
-  </script>
+  setInterval(() => {
+    yearIndex = (yearIndex + 1) % years.length;
+    render(years[yearIndex]);
+  }, 2000);
+}
+</script>
 </body>
 </html>
