@@ -14,6 +14,18 @@
     h2 {
       text-align: center;
     }
+    .summary {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .summary .year {
+      font-size: 100px;
+      color: red;
+    }
+    .summary .metric {
+      font-size: 50px;
+      color: blue;
+    }
     .section {
       display: flex;
       flex-direction: row;
@@ -35,6 +47,11 @@
 </head>
 <body>
 <h2>Comparing US Unemployment and CPI (2008-2010 vs 2019-2021)</h2>
+<div class="summary">
+  <div class="year">2020</div>
+  <div class="metric">Total US Unemployment: 5.8</div>
+  <div class="metric">Total CPI Increase: 5.5%</div>
+</div>
 <div id="legend"></div>
 <div class="section">
   <div class="panel">
