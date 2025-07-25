@@ -31,35 +31,31 @@
     const width = 960, height = 600;
     const svg = d3.select("#map");
     const path = d3.geoPath();
-    const color = d3.scaleQuantize()
-      .range(d3.schemeBlues[9]);
+    const color = d3.scaleQuantize().range(d3.schemeBlues[9]);
 
-    let unemploymentData = {};
-    let counties, us;
+    let unemploymentByYear = {};
+    let counties;
 
-    // Load all data files
+    // Load topojson and CSV
     Promise.all([
       d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json"),
       d3.csv("jobs_2007-2021_2.csv", d => ({
-        fips: +d.FIPS,
-        year: +d.Year,
+        fips: d.FIPS.padStart(5, '0'),
         rate: +d.UnemploymentRate,
+        year: +d.Year,
         county: d.County,
         state: d.State
       }))
-    ]).then(([topology, data]) => {
-      // Prepare data: group by year
+    ]).then(([us, data]) => {
+      // Group unemployment data by year, then by FIPS
       data.forEach(d => {
-        if (!unemploymentData[d.year]) unemploymentData[d.year] = {};
-        unemploymentData[d.year][d.fips] = d;
+        if (!unemploymentByYear[d.year]) unemploymentByYear[d.year] = {};
+        unemploymentByYear[d.year][d.fips] = d;
       });
 
-      us = topology;
       counties = topojson.feature(us, us.objects.counties).features;
+      updateMap(2007);
 
-      updateMap(2007); // Initial draw
-
-      // Add listener to slider
       d3.select("#yearSlider").on("input", function () {
         const year = +this.value;
         d3.select("#yearLabel").text(year);
@@ -68,54 +64,50 @@
     });
 
     function updateMap(year) {
-      const yearData = unemploymentData[year];
-
-      // Extract rates and find max for annotation
-      const rates = Object.values(yearData).map(d => d.rate);
+      const dataForYear = unemploymentByYear[year];
+      const rates = Object.values(dataForYear).map(d => d.rate);
       color.domain(d3.extent(rates));
 
-      const maxEntry = d3.max(Object.values(yearData), d => d.rate);
-      const highest = Object.values(yearData).filter(d => d.rate === maxEntry)[0];
-
-      // JOIN counties and unemployment rate
+      // Bind data to counties
       svg.selectAll("path")
         .data(counties)
         .join("path")
         .attr("d", path)
         .attr("fill", d => {
-          const record = yearData[d.id];
-          return record ? color(record.rate) : "#ccc";
+          const fips = d.id.padStart(5, '0');
+          const rec = dataForYear[fips];
+          return rec ? color(rec.rate) : "#ccc";
         })
         .attr("stroke", "#fff")
-        .attr("stroke-width", 0.5);
+        .attr("stroke-width", 0.3);
 
-      // Remove previous annotations
+      // Remove old annotations
       svg.selectAll(".annotation-group").remove();
 
-      // Add annotation for highest unemployment county
+      // Find the highest unemployment county
+      let highest = null;
+      for (const fips in dataForYear) {
+        if (!highest || dataForYear[fips].rate > highest.rate) {
+          highest = dataForYear[fips];
+        }
+      }
+
       if (highest) {
-        const countyFeature = counties.find(c => c.id == highest.fips);
+        const countyFeature = counties.find(c => c.id.padStart(5, '0') === highest.fips);
         if (countyFeature) {
-          const centroid = path.centroid(countyFeature);
-          const annotations = [
-            {
-              note: {
-                label: `${highest.county}, ${highest.state}: ${highest.rate}%`,
-                title: `Highest Unemployment`
-              },
-              x: centroid[0],
-              y: centroid[1],
-              dy: -30,
-              dx: 30
-            }
-          ];
+          const [x, y] = path.centroid(countyFeature);
+          const annotations = [{
+            note: {
+              label: `${highest.county}, ${highest.state}: ${highest.rate}%`,
+              title: `Highest Unemployment`
+            },
+            x, y,
+            dy: -30,
+            dx: 30
+          }];
 
-          const makeAnnotations = d3.annotation()
-            .annotations(annotations);
-
-          svg.append("g")
-            .attr("class", "annotation-group")
-            .call(makeAnnotations);
+          const makeAnnotations = d3.annotation().annotations(annotations);
+          svg.append("g").attr("class", "annotation-group").call(makeAnnotations);
         }
       }
     }
