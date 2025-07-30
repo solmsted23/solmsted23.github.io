@@ -1,0 +1,67 @@
+<html>
+<script src='https://d3js.org/d3.v5.min.js'></script>
+<style> rect {fill: lightblue; stroke: black; }</style>
+<body>
+<svg width=300 height=300>
+</svg>
+<script>
+var data = [4,8,15,16,23,42];
+
+
+
+
+
+
+var x = d3.scaleBand()
+.domain([0, 1, 2, 3, 4, 5])
+.range([0, 200]);
+
+var y = d3.scaleLinear()
+.domain([0, d3.max(data)])
+.range([200, 0]);
+
+var svg = d3.select("svg");
+
+const yAxis = d3.axisLeft(y)
+.ticks(9);
+
+const xAxis = d3.axisBottom(x);
+
+var g = svg.append("g")
+.attr("transform", "translate(50,50)");
+
+g.selectAll("rect")
+.data(data)
+.enter()
+.append("rect")
+.attr("x", (d,i) => x(i))
+.attr("y", d => y(d))
+.attr("width", x.bandwidth())
+.attr("height", d=> 200 - y(d));
+
+g.append("g")
+.attr("fill", "none")
+.attr("font-family", "sans-serif")
+.attr("font-size", "10")
+.attr("text-anchor", "end")
+.call(yAxis);
+
+
+svg.append("g")
+.attr("transform", "translate(50,250)")
+.call(xAxis);
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
+</body>
+</html>
