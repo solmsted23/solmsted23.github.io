@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Recession Comparison</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="https://unpkg.com/topojson@3"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 72px;
+      color: #323436;
+    }
+
+    #annotations {
+      display: flex;
+      gap: 60px;
+      font-size: 24px;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .annotation-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .annotation-label {
+      font-size: 28px;
+      color: #323436;
+      font-weight: bold;
+    }
+
+    .annotation-value {
+      font-size: 48px;
+      color: #0a65cc;
+      margin-top: 5px;
+    }
+
+    #yearText {
+      font-size: 82px;
+      color: #b80932;
+      font-weight: bold;
+    }
+
+    #slider-container {
+      margin-top: 40px;
+      text-align: center;
+    }
+
+    #slider-value {
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    svg.bar-chart {
+      display: block;
+      margin: 20px auto;
+    }
+
+    rect { fill: lightblue; stroke: black; }
+  </style>
+</head>
+<body>
+  <h2>Exploration of US Recession Unemployment and CPI Index</h2>
+
+  <div id="annotations">
+    <div id="yearText">--</div>
+    <div class="annotation-block">
+      <div class="annotation-label">Total Unemployment:</div>
+      <div class="annotation-value" id="unemploymentText">--</div>
+    </div>
+    <div class="annotation-block">
+      <div class="annotation-label">Total CPI Increase:</div>
+      <div class="annotation-value" id="cpiText">--</div>
+    </div>
+  </div>
+
+  <svg class="bar-chart" width="300" height="300"></svg>
+
+  <div id="slider-container">
+    <input type="range" id="slider" min="2007" max="2021" step="1" value="2007">
+    <span id="slider-value">2007</span>
+  </div>
+
+  <script>
+    const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
+
+    const categoryColors = {
+      "All food": "#4B0082",
+      "Food away from home": "#FF00FF",
+      "Food at home": "#8A2BE2",
+      "Meats, poultry, and fish": "#FF0000",
+      "Meats": "#CD5C5C",
+      "Beef and veal": "#800000",
+      "Pork": "#DC143C",
+      "Other meats": "#FFA07A",
+      "Poultry": "#FF4500",
+      "Fish and seafood": "#FF6347",
+      "Eggs": "#FFD700",
+      "Dairy products": "#FFFF00",
+      "Fats and oils": "#B8860B",
+      "Fruits and vegetables": "#48D1CC",
+      "Fresh fruits and vegetables": "#00FF00",
+      "Fresh fruits": "#00FFFF",
+      "Fresh vegetables": "#228B22",
+      "Processed fruits and vegetables": "#00FA9A",
+      "Sugar and sweets": "#1E90FF",
+      "Cereals and bakery products": "#4169E1",
+      "Nonalcoholic beverages": "#F4A460",
+      "Other foods": "#A52A2A"
+    };
+
+    let us, jobsData, unemploymentTotals, cpiTotals, cpiCategoryData;
+
+    Promise.all([
+      d3.json(mapUrl),
+      d3.csv("jobs_2007-2021_2.csv", d => ({
+        FIPS: d.FIPS.padStart(5, '0'),
+        State: d.State,
+        County: d.County,
+        EmploymentStatus: d.EmploymentStatus,
+        Year: +d.Year,
+        UnemploymentRate: +d.UnemploymentRate
+      })),
+      d3.csv("US_UnemploymentTotals.csv", d => ({
+        Year: +d.Year,
+        TotalUnemployment: +d.UnemploymentRate
+      })),
+      d3.csv("cpi_total.csv", d => ({
+        Year: +d.Year,
+        TotalCPI: +d.PercentChange
+      })),
+      d3.csv("cpi_index.csv", d => ({
+        Year: +d.Year,
+        Category: d["Consumer Price Index item"],
+        Change: +d["Percent change"]
+      }))
+    ]).then(([usData, jobData, unemploymentData, cpiData, cpiIndexData]) => {
+      us = usData;
+      jobsData = jobData;
+      unemploymentTotals = unemploymentData;
+      cpiTotals = cpiData;
+      cpiCategoryData = cpiIndexData;
+
+      const year = +document.getElementById("slider").value;
+      updateAnnotations(year);
+      updateBarChart(year);
+    });
+
+    d3.select("#slider").on("input", function () {
+      const year = +this.value;
+      d3.select("#slider-value").text(year);
+      updateAnnotations(year);
+      updateBarChart(year);
+    });
+
+    function updateAnnotations(year) {
+      const unemployment = unemploymentTotals.find(d => d.Year === year);
+      const cpi = cpiTotals.find(d => d.Year === year);
+
+      document.getElementById("yearText").textContent = year;
+      document.getElementById("unemploymentText").textContent = unemployment ? `${unemployment.TotalUnemployment.toFixed(1)}%` : "--";
+      document.getElementById("cpiText").textContent = cpi ? `${cpi.TotalCPI.toFixed(1)}%` : "--";
+    }
+
+    function updateBarChart(year) {
+      const svg = d3.select("svg.bar-chart");
+      svg.selectAll("*").remove();
+
+      const yearData = cpiCategoryData.filter(d => d.Year === year);
+      const data = yearData.map(d => d.Change);
+
+      const x = d3.scaleBand()
+        .domain(d3.range(data.length))
+        .range([0, 200])
+        .padding(0.1);
+
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(data)])
+        .range([200, 0]);
+
+      const g = svg.append("g").attr("transform", "translate(50,50)");
+
+      g.selectAll("rect")
+        .data(data)
+        .enter()
+        .append("rect")
+        .attr("x", (d, i) => x(i))
+        .attr("y", d => y(d))
+        .attr("width", x.bandwidth())
+        .attr("height", d => 200 - y(d));
+
+      const yAxis = d3.axisLeft(y).ticks(9);
+      const xAxis = d3.axisBottom(x);
+
+      g.append("g").call(yAxis);
+      svg.append("g").attr("transform", "translate(50,250)").call(xAxis);
+    }
+  </script>
+</body>
+</html>
