@@ -155,15 +155,15 @@
     </div>
 
   </div>
-  <div>
+  <div style="display: flex; justify-content: center; gap: 60px; margin-top: 20px;">
     <div id="slider-container">
-        <label for="slider">Great Recession:</label>
+        <label for="slider">Great Recession:</label><br>
         <input type="range" id="slider" min="2007" max="2009" step="1" value="2007">
         <span id="slider-value">2007</span>
     </div>
 
     <div id="slider-container">
-        <label for="slider2">COVID-19 Recession:</label>
+        <label for="slider2">COVID-19 Recession:</label><br>
         <input type="range" id="slider2" min="2019" max="2021" step="1" value="2019">
         <span id="slider-value2">2019</span>
     </div>
@@ -231,11 +231,14 @@
       cpiCategoryData = cpiIndexData;
       globalMaxChange = d3.max(cpiCategoryData, d => d.Change);
 
-      const year = +document.getElementById("slider").value;
-      updateMap(year);
-      updateBarChart(year);
-      updateAnnotations(year);
-      autoplay();
+        const year = +document.getElementById("slider").value;
+        const year2 = +document.getElementById("slider2").value;
+
+        updateMap(year);
+        updateBarChart(year);
+        updateAnnotations(year);
+        updateAnnotations2(year2);
+        autoplay();
     });
 
     d3.select("#slider").on("input", function () {
