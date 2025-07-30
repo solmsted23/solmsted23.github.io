@@ -48,7 +48,7 @@
       margin-top: 5px;
     }
 
-    #yearText {
+    #year-text {
       font-size: 82px;
       color: #b80932;
       font-weight: bold;
@@ -85,7 +85,7 @@
     }
 
     #next-page-btn:hover {
-    background-color: #084a9c;
+    background-color: #b80932;
     }
 
     #nav-indicators {
@@ -102,7 +102,7 @@
     }
 
     .nav-rect.active {
-    background-color: blue;
+    background-color: #0a65cc;
     }
   </style>
 </head>
@@ -114,13 +114,13 @@
       <div class="nav-rect"></div>
       <div class="nav-rect"></div>
     </div>
-    <button id="next-page-btn" onclick="location.href='https://www.placeholder.com'">Investigate Further -></button>
+    <button id="next-page-btn" onclick="location.href='https://www.placeholder.com'">Investigate Further >></button>
   </div>
 
   <h2>Exploration of US Recession Unemployment and CPI Index</h2>
 
   <div id="annotations">
-    <div id="yearText">--</div>
+    <div id="year-text">--</div>
     <div class="annotation-block">
       <div class="annotation-label">Total Unemployment:</div>
       <div class="annotation-value" id="unemploymentText">--</div>
@@ -217,7 +217,7 @@
       const unemployment = unemploymentTotals.find(d => d.Year === year);
       const cpi = cpiTotals.find(d => d.Year === year);
 
-      document.getElementById("yearText").textContent = year;
+      document.getElementById("year-text").textContent = year;
       document.getElementById("unemploymentText").textContent = unemployment ? `${unemployment.TotalUnemployment.toFixed(1)}%` : "--";
       document.getElementById("cpiText").textContent = cpi ? `${cpi.TotalCPI.toFixed(1)}%` : "--";
     }
