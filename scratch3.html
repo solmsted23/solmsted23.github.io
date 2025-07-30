@@ -87,7 +87,7 @@
     </div>
   </div>
 
-  <svg class="bar-chart" width="600" height="600"></svg>
+  <svg class="bar-chart" width="800" height="800"></svg>
 
   <div id="slider-container">
     <input type="range" id="slider" min="2007" max="2021" step="1" value="2007">
@@ -191,7 +191,8 @@
         .domain([0, d3.max(data)])
         .range([200, 0]);
 
-      const g = svg.append("g").attr("transform", "translate(50,50)");
+      const g = svg.append("g").attr("transform", "translate(50,50)")
+      .attr("fill", d => categoryColors[d.category] || "gray");
 
       g.selectAll("rect")
         .data(data)
