@@ -191,8 +191,7 @@
         .domain([0, d3.max(data)])
         .range([200, 0]);
 
-      const g = svg.append("g").attr("transform", "translate(50,50)")
-      .attr("fill", d => categoryColors[d.category] || "gray");
+      const g = svg.append("g").attr("transform", "translate(50,50)");
 
       g.selectAll("rect")
         .data(data)
@@ -201,7 +200,8 @@
         .attr("x", (d, i) => x(i))
         .attr("y", d => y(d))
         .attr("width", x.bandwidth())
-        .attr("height", d => 200 - y(d));
+        .attr("height", d => 200 - y(d))
+        .attr("fill", d => categoryColors[d.Category] || "gray");
 
       const yAxis = d3.axisLeft(y).ticks(9);
       const xAxis = d3.axisBottom(x);
