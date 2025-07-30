@@ -176,39 +176,53 @@
     }
 
     function updateBarChart(year) {
-      const svg = d3.select("svg.bar-chart");
-      svg.selectAll("*").remove();
+    const svg = d3.select("svg.bar-chart");
+    svg.selectAll("*").remove();
 
-      const yearData = cpiCategoryData.filter(d => d.Year === year);
-      const data = yearData.map(d => d.Change);
+    const yearData = cpiCategoryData.filter(d => d.Year === year);
 
-      const x = d3.scaleBand()
-        .domain(d3.range(data.length))
-        .range([0, 200])
+    const x = d3.scaleBand()
+        .domain(yearData.map((d, i) => i)) // Use index for x positioning
+        .range([0, 700]) // wider chart
         .padding(0.1);
 
-      const y = d3.scaleLinear()
-        .domain([0, d3.max(data)])
-        .range([200, 0]);
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(yearData, d => d.Change)])
+        .range([600, 0]); // taller chart
 
-      const g = svg.append("g").attr("transform", "translate(50,50)");
+    const g = svg.append("g").attr("transform", "translate(50,100)");
 
-      g.selectAll("rect")
-        .data(data)
+    // Bind full yearData objects so we have access to Category
+    g.selectAll("rect")
+        .data(yearData)
         .enter()
         .append("rect")
         .attr("x", (d, i) => x(i))
-        .attr("y", d => y(d))
+        .attr("y", d => y(d.Change))
         .attr("width", x.bandwidth())
-        .attr("height", d => 200 - y(d))
+        .attr("height", d => 600 - y(d.Change))
         .attr("fill", d => categoryColors[d.Category] || "gray");
 
-      const yAxis = d3.axisLeft(y).ticks(9);
-      const xAxis = d3.axisBottom(x);
+    // Y-axis
+    const yAxis = d3.axisLeft(y).ticks(10);
+    g.append("g").call(yAxis);
 
-      g.append("g").call(yAxis);
-      svg.append("g").attr("transform", "translate(50,250)").call(xAxis);
+    // X-axis (category names optional)
+    const xAxis = d3.axisBottom(x)
+        .tickFormat((d, i) => yearData[i].Category.length > 10 
+        ? yearData[i].Category.slice(0, 10) + "…" 
+        : yearData[i].Category);
+
+    svg.append("g")
+        .attr("transform", "translate(50,700)")
+        .call(xAxis)
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-0.8em")
+        .attr("dy", "-0.15em")
+        .attr("transform", "rotate(-65)");
     }
+    
   </script>
 </body>
 </html>
