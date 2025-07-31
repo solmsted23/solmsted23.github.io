@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Recession Comparison</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson@3"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 62px;
+      color: #323436;
+      margin-top: 100px;
+    }
+
+    #annotations {
+      left: 30px;
+      top: 100px;
+      display: flex;
+      gap: 60px;
+      font-size: 24px;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .annotation-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .annotation-label {
+      font-size: 28px;
+      color: #323436;
+      font-weight: bold;
+    }
+
+    .annotation-value {
+      font-size: 48px;
+      color: #0a65cc;
+      margin-top: 5px;
+    }
+
+    #year-text {
+      font-size: 82px;
+      color: #b80932;
+      font-weight: bold;
+      align-self: center;
+    }
+
+    #slider-container {
+      margin-top: 5px;
+      text-align: center;
+    }
+
+    #slider-value {
+      font-weight: bold;
+      font-size: 24px;
+      margin-left: 10px;
+    }
+
+    #top-right-ui {
+      position: absolute;
+      top: 20px;
+      right: 60px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    #next-page-btn {
+      font-size: 24px;
+      padding: 10px 20px;
+      background-color: #b80932;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #next-page-btn:hover {
+      background-color: #fcc03d;
+    }
+
+    #nav-indicators {
+      display: flex;
+      gap: 15px;
+    }
+
+    .nav-rect {
+      width: 15px;
+      height: 15px;
+      background-color: gray;
+      border-radius: 2px;
+      gap: 40px;
+    }
+
+    .nav-rect.active {
+      background-color: #0a65cc;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="top-right-ui">
+    <div id="nav-indicators">
+      <div class="nav-rect active"></div>
+      <div class="nav-rect"></div>
+      <div class="nav-rect"></div>
+    </div>
+    <button id="next-page-btn" onclick="location.href='https://solmsted23.github.io/RecessionExploration-1'">Start Over >></button>
+  </div>
+
+  <h2>Exploration of US Recession Unemployment and CPI Index</h2>
+
+  <div id="annotations">
+    <div id="year-text">--</div>
+    <div class="annotation-block">
+      <div class="annotation-label">Total Unemployment:</div>
+      <div class="annotation-value" id="unemploymentText">--</div>
+    </div>
+    <div class="annotation-block">
+      <div class="annotation-label">Total CPI Increase:</div>
+      <div class="annotation-value" id="cpiText">--</div>
+    </div>
+  </div>
+
+  <div id="slider-container">
+    <input type="range" id="slider" min="2007" max="2021" step="1" value="2007">
+    <span id="slider-value">2007</span>
+  </div>
+
+  <div style="display: flex; justify-content: center; gap: 100px; margin-top: 20px;">
+    <svg id="map" width="600" height="400"></svg>
+    <svg id="bar" width="600" height="400"></svg>
+  </div>
+
+  <script>
+    const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
+
+    const categoryColors = {
+        "All food": "#4B0082",
+        "Food away from home": "#FF00FF",
+        "Food at home": "#8A2BE2",
+        "Meats, poultry, and fish": "#FF0000",
+        "Meats": "#CD5C5C",
+        "Beef and veal": "#800000",
+        "Pork": "#DC143C",
+        "Other meats": "#FFA07A",
+        "Poultry": "#FF4500",
+        "Fish and seafood": "#FF6347",
+        "Eggs": "#FFD700",
+        "Dairy products": "#FFFF00",
+        "Fats and oils": "#B8860B",
+        "Fruits and vegetables": "#48D1CC",
+        "Fresh fruits and vegetables": "#00FF00",
+        "Fresh fruits": "#00FFFF",
+        "Fresh vegetables": "#228B22",
+        "Processed fruits and vegetables": "#00FA9A",
+        "Sugar and sweets": "#1E90FF",
+        "Cereals and bakery products": "#4169E1",
+        "Nonalcoholic beverages": "#F4A460",
+        "Other foods": "#A52A2A"
+        };
+
+    let us, jobsData, unemploymentTotals, cpiTotals, cpiCategoryData, globalMaxChange;
+
+    Promise.all([
+      d3.json(mapUrl),
+      d3.csv("jobs_2007-2021_2.csv", d => ({
+        FIPS: d.FIPS.padStart(5, '0'),
+        Year: +d.Year,
+        UnemploymentRate: +d.UnemploymentRate
+      })),
+      d3.csv("US_UnemploymentTotals.csv", d => ({
+        Year: +d.Year,
+        TotalUnemployment: +d.UnemploymentRate
+      })),
+      d3.csv("cpi_total.csv", d => ({
+        Year: +d.Year,
+        TotalCPI: +d.PercentChange
+      })),
+      d3.csv("cpi_index.csv", d => ({
+        Year: +d.Year,
+        Category: d["Consumer Price Index item"],
+        Change: +d["Percent change"]
+      }))
+    ]).then(([usData, jobData, unemploymentData, cpiData, cpiIndexData]) => {
+      us = usData;
+      jobsData = jobData;
+      unemploymentTotals = unemploymentData;
+      cpiTotals = cpiData;
+      cpiCategoryData = cpiIndexData;
+      globalMaxChange = d3.max(cpiCategoryData, d => d.Change);
+
+      document.getElementById("slider").addEventListener("input", e => {
+        const year = +e.target.value;
+        document.getElementById("slider-value").textContent = year;
+        updateVisuals(year);
+      });
+
+      let yearIndex = 0;
+      const years = d3.range(2007, 2022);
+      setInterval(() => {
+        const year = years[yearIndex % years.length];
+        document.getElementById("slider").value = year;
+        document.getElementById("slider-value").textContent = year;
+        updateVisuals(year);
+        yearIndex++;
+      }, 2000);
+
+      updateVisuals(2007);
+    });
+
+    const tooltip = d3.select("#tooltip");
+
+    function showTooltip(html, event) {
+    tooltip
+        .html(html)
+        .style("left", (event.pageX + 12) + "px")
+        .style("top", (event.pageY + 12) + "px")
+        .style("display", "block");
+    }
+
+function hideTooltip() {
+  tooltip.style("display", "none");
+}
+
+    function updateVisuals(year) {
+      const unemployment = unemploymentTotals.find(d => d.Year === year);
+      const cpi = cpiTotals.find(d => d.Year === year);
+      document.getElementById("year-text").textContent = year;
+      document.getElementById("unemploymentText").textContent = unemployment ? `${unemployment.TotalUnemployment.toFixed(1)}%` : "--";
+      document.getElementById("cpiText").textContent = cpi ? `${cpi.TotalCPI.toFixed(1)}%` : "--";
+
+      drawMap(year);
+      drawBar(year);
+    }
+
+    function drawMap(year) {
+      const svg = d3.select("#map");
+      const projection = d3.geoAlbersUsa().translate([300, 200]).scale(800);
+      const path = d3.geoPath().projection(projection);
+      const colorScale = d3.scaleSequential(d3.interpolateViridis)
+        .domain(d3.extent(jobsData, d => d.UnemploymentRate).reverse());
+
+      const dataByFIPS = Object.fromEntries(
+        jobsData.filter(d => d.Year === year).map(d => [d.FIPS, d.UnemploymentRate])
+      );
+
+      const counties = topojson.feature(us, us.objects.counties).features;
+
+      svg.selectAll("*").remove();
+      svg.append("g")
+        .selectAll("path")
+        .data(counties)
+        .join("path")
+        .attr("d", path)
+        .attr("fill", d => {
+          const val = dataByFIPS[d.id];
+          return val !== undefined ? colorScale(val) : "#ccc";
+        })
+        .attr("stroke", "#fff")
+        .on("mouseover", function (event, d) {
+            const rate = dataByFIPS[d.id];
+            if (rate !== undefined) {
+            showTooltip(`Unemployment Rate: <strong>${rate.toFixed(1)}%</strong>`, event);
+            }
+        })
+        .on("mousemove", function (event) {
+            tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
+        })
+        .on("mouseout", hideTooltip);
+    }
+
+    function drawBar(year) {
+      const svg = d3.select("#bar");
+      const margin = { top: 20, right: 20, bottom: 80, left: 50 };
+      const width = 600 - margin.left - margin.right;
+      const height = 400 - margin.top - margin.bottom;
+      const bw = width - margin.left - margin.right;
+      const bh = height - margin.top - margin.bottom;
+
+      const cpi = cpiCategoryData.filter(d => d.Year === year);
+
+      svg.selectAll("*").remove();
+      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const x = d3.scaleBand().domain(cpi.map(d => d.Category)).range([0, width]).padding(0.2);
+      const y = d3.scaleLinear().domain([-22, 30]).range([height, 0]);
+
+      g.append("g").call(d3.axisLeft(y));
+      g.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x))
+        .selectAll("text")
+        .attr("transform", "rotate(-45)")
+        .style("text-anchor", "end");
+
+      g.selectAll("rect")
+        .data(cpi)
+        .join("rect")
+        .attr("x", d => x(d.Category))
+        .attr("y", d => d.Change >= 0 ? y(d.Change) : y(0))
+        .attr("width", x.bandwidth())
+        .attr("height", d => Math.abs(y(d.Change) - y(0)))
+        .attr("fill", d => categoryColors[d.Category] || "#ccc")
+        .on("mouseover", function(event, d) {
+            showTooltip(`<strong>${d.Category}</strong><br>Change: ${d.Change.toFixed(1)}%`, event);
+        })
+        .on("mousemove", function(event) {
+            tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
+        })
+        .on("mouseout", hideTooltip);
+    }
+  </script>
+  <div id="tooltip" style="
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  pointer-events: none;
+  font-size: 14px;
+  box-shadow: 0 0 8px rgba(0,0,0,0.2);
+  display: none;
+  z-index: 1000;
+  "></div>
+</body>
+</html>
