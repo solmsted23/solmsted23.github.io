@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Recession Comparison</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson@3"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 62px;
+      color: #323436;
+      margin-top: 100px;
+    }
+
+    #annotations {
+      left: 30px;
+      top: 100px;
+      display: flex;
+      gap: 60px;
+      font-size: 24px;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      align-items: center;
+    }
+
+    .annotation-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .annotation-label {
+      font-size: 28px;
+      color: #323436;
+      font-weight: bold;
+    }
+
+    .annotation-value {
+      font-size: 48px;
+      color: #0a65cc;
+      margin-top: 5px;
+    }
+
+    #year-text {
+      font-size: 82px;
+      color: #b80932;
+      font-weight: bold;
+      align-self: center;
+    }
+
+    #year-text-2 {
+      font-size: 82px;
+      color: #b80932;
+      font-weight: bold;
+      align-self: center;
+    }
+
+    #slider-container {
+      margin-top: 5px;
+      text-align: center;
+    }
+
+    #slider-value {
+      font-weight: bold;
+      font-size: 24px;
+      margin-left: 10px;
+    }
+
+    #slider-value2 {
+      font-weight: bold;
+      font-size: 24px;
+      margin-left: 10px;
+    }
+
+    #top-right-ui {
+    position: absolute;
+    top: 20px;
+    right: 60px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    }
+
+    #next-page-btn {
+    font-size: 24px;
+    padding: 10px 20px;
+    background-color: #b80932;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    }
+
+    #next-page-btn:hover {
+    background-color: #fcc03d;
+    }
+
+    #nav-indicators {
+    display: flex;
+    gap: 15px;
+    }
+
+    .nav-rect {
+    width: 15px;
+    height: 15px;
+    background-color: gray;
+    border-radius: 2px;
+    gap: 40px;
+    }
+
+    .nav-rect.active {
+    background-color: #0a65cc;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="top-right-ui">
+    <div id="nav-indicators">
+      <div class="nav-rect"></div>
+      <div class="nav-rect active"></div>
+      <div class="nav-rect"></div>
+    </div>
+    <button id="next-page-btn" onclick="location.href='https://solmsted23.github.io/RecessionExploration-3'">Investigate Further >></button>
+  </div>
+
+  <h2>Exploration of US Recession Unemployment and CPI Index</h2>
+
+  <div style="display: flex; justify-content: space-around; margin-top: 30px;">
+
+    <div id="annotations">
+        <div id="year-text">--</div>
+        <div class="annotation-block">
+        <div class="annotation-label">Total Unemployment:</div>
+        <div class="annotation-value" id="unemploymentText">--</div>
+        </div>
+        <div class="annotation-block">
+        <div class="annotation-label">Total CPI Increase:</div>
+        <div class="annotation-value" id="cpiText">--</div>
+        </div>
+        <div id="year-text-2">--</div>
+        <div class="annotation-block">
+        <div class="annotation-label">Total Unemployment:</div>
+        <div class="annotation-value" id="unemploymentText2">--</div>
+        </div>
+        <div class="annotation-block">
+        <div class="annotation-label">Total CPI Increase:</div>
+        <div class="annotation-value" id="cpiText2">--</div>
+        </div>
+
+    </div>
+
+  </div>
+  <div style="display: flex; justify-content: center; gap: 400px; margin-top: 20px;">
+    <div id="slider-container">
+        <label for="slider">Great Recession:</label><br>
+        <input type="range" id="slider" min="2007" max="2009" step="1" value="2007">
+        <span id="slider-value">2007</span>
+    </div>
+
+    <div id="slider-container">
+        <label for="slider2">COVID-19 Recession:</label><br>
+        <input type="range" id="slider2" min="2019" max="2021" step="1" value="2019">
+        <span id="slider-value2">2019</span>
+    </div>
+  </div>
+
+  <script>
+    const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
+
+    const categoryColors = {
+      "All food": "#4B0082",
+      "Food away from home": "#FF00FF",
+      "Food at home": "#8A2BE2",
+      "Meats, poultry, and fish": "#FF0000",
+      "Meats": "#CD5C5C",
+      "Beef and veal": "#800000",
+      "Pork": "#DC143C",
+      "Other meats": "#FFA07A",
+      "Poultry": "#FF4500",
+      "Fish and seafood": "#FF6347",
+      "Eggs": "#FFD700",
+      "Dairy products": "#FFFF00",
+      "Fats and oils": "#B8860B",
+      "Fruits and vegetables": "#48D1CC",
+      "Fresh fruits and vegetables": "#00FF00",
+      "Fresh fruits": "#00FFFF",
+      "Fresh vegetables": "#228B22",
+      "Processed fruits and vegetables": "#00FA9A",
+      "Sugar and sweets": "#1E90FF",
+      "Cereals and bakery products": "#4169E1",
+      "Nonalcoholic beverages": "#F4A460",
+      "Other foods": "#A52A2A"
+    };
+
+    let globalMaxChange = 0;
+    let us, jobsData, unemploymentTotals, cpiTotals, cpiCategoryData;
+
+    Promise.all([
+      d3.json(mapUrl),
+      d3.csv("jobs_2007-2021_2.csv", d => ({
+        FIPS: d.FIPS.padStart(5, '0'),
+        State: d.State,
+        County: d.County,
+        EmploymentStatus: d.EmploymentStatus,
+        Year: +d.Year,
+        UnemploymentRate: +d.UnemploymentRate
+      })),
+      d3.csv("US_UnemploymentTotals.csv", d => ({
+        Year: +d.Year,
+        TotalUnemployment: +d.UnemploymentRate
+      })),
+      d3.csv("cpi_total.csv", d => ({
+        Year: +d.Year,
+        TotalCPI: +d.PercentChange
+      })),
+      d3.csv("cpi_index.csv", d => ({
+        Year: +d.Year,
+        Category: d["Consumer Price Index item"],
+        Change: +d["Percent change"]
+      }))
+    ]).then(([usData, jobData, unemploymentData, cpiData, cpiIndexData]) => {
+      us = usData;
+      jobsData = jobData;
+      unemploymentTotals = unemploymentData;
+      cpiTotals = cpiData;
+      cpiCategoryData = cpiIndexData;
+      globalMaxChange = d3.max(cpiCategoryData, d => d.Change);
+
+        const year = +document.getElementById("slider").value;
+        const year2 = +document.getElementById("slider2").value;
+
+        updateMap(year);
+        updateBarChart(year);
+        updateAnnotations(year);
+        updateAnnotations2(year2);
+        autoplay();
+    });
+
+    d3.select("#slider").on("input", function () {
+      const year = +this.value;
+      d3.select("#slider-value").text(year);
+      updateMap(year);
+      updateBarChart(year);
+      updateAnnotations(year);
+    });
+
+    d3.select("#slider2").on("input", function () {
+      const year = +this.value;
+      d3.select("#slider-value2").text(year);
+      updateAnnotations2(year);
+    });
+
+    function updateAnnotations(year) {
+      const unemployment = unemploymentTotals.find(d => d.Year === year);
+      const cpi = cpiTotals.find(d => d.Year === year);
+
+      document.getElementById("year-text").textContent = year;
+      document.getElementById("unemploymentText").textContent = unemployment ? `${unemployment.TotalUnemployment.toFixed(1)}%` : "--";
+      document.getElementById("cpiText").textContent = cpi ? `${cpi.TotalCPI.toFixed(1)}%` : "--";
+    }
+
+    function updateAnnotations2(year) {
+    const unemployment = unemploymentTotals.find(d => d.Year === year);
+    const cpi = cpiTotals.find(d => d.Year === year);
+
+    document.getElementById("year-text-2").textContent = year;
+    document.getElementById("unemploymentText2").textContent = unemployment ? `${unemployment.TotalUnemployment.toFixed(1)}%` : "--";
+    document.getElementById("cpiText2").textContent = cpi ? `${cpi.TotalCPI.toFixed(1)}%` : "--";
+    }
+
+    function updateMap(year) {
+      console.log("Update map for year", year);
+    }
+
+    function updateBarChart(year) {
+      console.log("Update bar chart for year", year);
+    }
+
+    function autoplay() {
+
+    }
+  </script>
+
+<div style="display: flex; justify-content: space-around; align-items: flex-start; margin: 80px 60px 20px 60px; gap: 60px; font-family: 'Times New Roman', serif; font-size: 18px; line-height: 1.6;">
+  <div style="flex: 1;">
+    <h3 style="font-size: 28px; margin-bottom: 10px;">Great Recession</h3>
+    <h4 style="font-size: 18px; margin-bottom: 10px;">Time Period: December 2007 – June 2009</h4>
+    <h4 style="font-size: 18px; margin-bottom: 10px;">GDP Decline (peak to trough): -5.1%</h4>
+    <p>
+      "The subprime mortgage crisis led to the collapse of the United States housing bubble. Falling housing-related assets contributed to the 2008 financial crisis, even as oil and food prices soared. The crisis led to the failure or collapse of many of the United States' largest financial institutions: Bear Stearns, Fannie Mae, Freddie Mac, Lehman Brothers, and AIG, as well as a crisis in the automobile industry. The government responded with an unprecedented $700 billion bank bailout and $787 billion fiscal stimulus package. The National Bureau of Economic Research declared the end of this recession over a year after the end date.[79] The Dow Jones Industrial Average (Dow) finally reached its lowest point on March 9, 2009."
+    </p>
+  </div>
+  <div style="flex: 1;">
+    <h3 style="font-size: 28px; margin-bottom: 10px;">COVID-19 Recession</h3>
+    <h4 style="font-size: 18px; margin-bottom: 10px;">Time Period: February 2020 – April 2020</h4>
+    <h4 style="font-size: 18px; margin-bottom: 10px;">GDP Decline (peak to trough): −19.2%</h4>
+    <p>
+      "The economic effects of the pandemic were severe after the first quarter of 2020. More than 24 million people lost jobs in the United States in just three weeks in April.[86] The economic impact of the virus is still being determined, but the recession was the shortest on record."
+    </p>
+  </div>
+</div>
+
+<p style="text-align: center; font-size: 16px; font-family: 'Times New Roman', serif; margin-top: 20px;">
+  Reference: <a href="https://en.wikipedia.org/wiki/List_of_recessions_in_the_United_States" target="_blank">
+    List of recessions in the United States – Wikipedia
+  </a>
+</p>
+
+
+</body>
+</html>
