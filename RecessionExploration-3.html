@@ -285,7 +285,7 @@ function hideTooltip() {
         .attr("d", path)
         .attr("fill", d => {
           const val = dataByFIPS[d.id];
-          return val !== undefined ? colorScale(val) : "#ccc";
+          return val !== undefined ? colorScale(val.UnemploymentRate) : "#ccc";
         })
         .attr("stroke", "#fff")
         .on("mouseover", function (event, d) {
