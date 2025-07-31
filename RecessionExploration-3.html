@@ -304,6 +304,53 @@ function hideTooltip() {
             tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
         })
         .on("mouseout", hideTooltip);
+        drawLegend(svg, colorScale);
+    }
+
+    function drawLegend(svg, colorScale) {
+      const legendWidth = 300;
+      const legendHeight = 10;
+
+      const defs = svg.append("defs");
+      const linearGradient = defs.append("linearGradient")
+        .attr("id", "legend-gradient");
+
+      linearGradient.selectAll("stop")
+        .data(d3.range(0, 1.01, 0.01))
+        .enter()
+        .append("stop")
+        .attr("offset", d => d)
+        .attr("stop-color", d => colorScale(d3.interpolateNumber(colorScale.domain()[0], colorScale.domain()[1])(d)));
+
+      svg.append("g")
+        .attr("transform", "translate(150, 360)") // Adjust position as needed
+        .append("rect")
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        .style("fill", "url(#legend-gradient)")
+        .style("stroke", "#333")
+        .style("stroke-width", 0.5);
+
+      const legendScale = d3.scaleLinear()
+        .domain(colorScale.domain())
+        .range([0, legendWidth]);
+
+      const legendAxis = d3.axisBottom(legendScale)
+        .ticks(6)
+        .tickFormat(d => d.toFixed(1) + "%");
+
+      svg.append("g")
+        .attr("transform", `translate(150, ${360 + legendHeight})`)
+        .call(legendAxis)
+        .select(".domain").remove();
+
+      svg.append("text")
+        .attr("x", 150 + legendWidth / 2)
+        .attr("y", 355)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#333")
+        .attr("font-size", "12px")
+        .text("Unemployment Rate");
     }
 
     function drawBar(year) {
