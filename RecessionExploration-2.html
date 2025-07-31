@@ -236,8 +236,9 @@
     cpiCategoryData = cpiIndexData;
     globalMaxChange = d3.max(cpiCategoryData, d => d.Change);
     
-    createCharts();
-    autoplay(); 
+    setInterval(autoplay, 20000);
+    createCharts(); // call after load
+    autoplay(); // start animation
     });
 
     function updateAnnotations(year) {
@@ -260,7 +261,7 @@
     const container = document.createElement("div");
     container.style.display = "flex";
     container.style.justifyContent = "space-around";
-    container.style.marginTop = "30px";
+    container.style.marginTop = "60px";
 
     ["Left", "Right"].forEach(side => {
         const panel = document.createElement("div");
@@ -268,7 +269,7 @@
         panel.style.flexDirection = "column";
         panel.innerHTML = `
         <svg id="map${side}" width="600" height="400"></svg>
-        <svg id="bar${side}" width="600" height="400" style="margin-top: 10px;"></svg>
+        <svg id="bar${side}" width="600" height="400" style="margin-top: 20px;"></svg>
         `;
         container.appendChild(panel);
     });
@@ -331,9 +332,9 @@
     }
 
     function autoplay() {
-        const yearsLeft = [2007, 2008, 2009];
-        const yearsRight = [2019, 2020, 2021];
-        let i = 0;
+    const yearsLeft = [2007, 2008, 2009];
+    const yearsRight = [2019, 2020, 2021];
+    let i = 0;
 
     setInterval(() => {
         const yearLeft = yearsLeft[i % yearsLeft.length];
