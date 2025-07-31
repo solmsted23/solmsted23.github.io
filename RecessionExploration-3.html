@@ -190,10 +190,15 @@
     Promise.all([
       d3.json(mapUrl),
       d3.csv("jobs_2007-2021_2.csv", d => ({
-        FIPS: d.FIPS.padStart(5, '0'),
-        Year: +d.Year,
-        UnemploymentRate: +d.UnemploymentRate
-      })),
+      FIPS: d.FIPS.padStart(5, '0'),
+      County: d.County,
+      State: d.State,
+      Year: +d.Year,
+      UnemploymentRate: +d.UnemploymentRate,
+      TotalLaborForce: +d.TotalLaborForce,
+      Employed: +d.Employed,
+      Unemployed: +d.Unemployed
+    })),
       d3.csv("US_UnemploymentTotals.csv", d => ({
         Year: +d.Year,
         TotalUnemployment: +d.UnemploymentRate
@@ -267,7 +272,7 @@ function hideTooltip() {
         .domain(d3.extent(jobsData, d => d.UnemploymentRate).reverse());
 
       const dataByFIPS = Object.fromEntries(
-        jobsData.filter(d => d.Year === year).map(d => [d.FIPS, d.UnemploymentRate])
+        jobsData.filter(d => d.Year === year).map(d => [d.FIPS, d])
       );
 
       const counties = topojson.feature(us, us.objects.counties).features;
@@ -287,12 +292,12 @@ function hideTooltip() {
             const rate = dataByFIPS[d.id];
             if (rate !== undefined) {
             showTooltip(`
-            <strong>${d.County}, ${d.State}</strong><br/>
-            <strong>Unemployment Rate:</strong> ${+d.UnemploymentRate}%<br/>
-            <strong>Total Labor Force:</strong> ${(+d.TotalLaborForce).toLocaleString()}<br/>
-            <strong>Employed:</strong> ${(+d.Employed).toLocaleString()}<br/>
-            <strong>Unemployed:</strong> ${(+d.Unemployed).toLocaleString()}
-            `, event);
+             <strong>${info.County}, ${info.State}</strong><br/>
+            <strong>Unemployment Rate:</strong> ${info.UnemploymentRate.toFixed(1)}%<br/>
+            <strong>Total Labor Force:</strong> ${info.TotalLaborForce.toLocaleString()}<br/>
+            <strong>Employed:</strong> ${info.Employed.toLocaleString()}<br/>
+            <strong>Unemployed:</strong> ${info.Unemployed.toLocaleString()}
+          `, event);
             }
         })
         .on("mousemove", function (event) {
