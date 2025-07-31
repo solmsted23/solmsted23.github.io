@@ -72,8 +72,8 @@
     <textarea id="bizMapInput" placeholder='{"business_id": "abc123", "name": "Taco Palace"}'></textarea>
 
     <div>
-      <button onclick="loadData()">Load Data</button>
-      <button onclick="processData()" id="processBtn" disabled>Process Data</button>
+      <button id="loadBtn">Load Data</button>
+      <button id="processBtn" disabled>Process Data</button>
     </div>
 
     <div id="status">Idle</div>
@@ -83,25 +83,24 @@
     <pre id="output"></pre>
   </div>
 
-  <script>
-    let reviews = [];
-    let dishes = [];
-    let bizNames = {};
+  <script defer>
+    var reviews = [];
+    var dishes = [];
+    var bizNames = {};
 
     function loadData() {
       document.getElementById("status").textContent = "Loading data...";
       document.getElementById("spinner").style.display = "inline-block";
 
-      setTimeout(() => {
+      setTimeout(function () {
         reviews = [];
         dishes = [];
         bizNames = {};
 
-        // Parse reviews
-        const reviewsRaw = document.getElementById('jsonInput').value.trim().split('\n');
-        for (let line of reviewsRaw) {
+        var reviewsRaw = document.getElementById('jsonInput').value.trim().split('\n');
+        for (var i = 0; i < reviewsRaw.length; i++) {
           try {
-            const data = JSON.parse(line);
+            var data = JSON.parse(reviewsRaw[i]);
             reviews.push({
               review: data.text || '',
               stars: data.stars || 0,
@@ -113,15 +112,16 @@
           }
         }
 
-        // Parse dishes
-        const dishesRaw = document.getElementById('dishInput').value.trim().split('\n');
-        dishes = dishesRaw.map(d => d.trim()).filter(Boolean);
+        var dishesRaw = document.getElementById('dishInput').value.trim().split('\n');
+        for (var j = 0; j < dishesRaw.length; j++) {
+          var d = dishesRaw[j].trim();
+          if (d) dishes.push(d);
+        }
 
-        // Parse business name mapping
-        const bizRaw = document.getElementById('bizMapInput').value.trim().split('\n');
-        for (let line of bizRaw) {
+        var bizRaw = document.getElementById('bizMapInput').value.trim().split('\n');
+        for (var k = 0; k < bizRaw.length; k++) {
           try {
-            const b = JSON.parse(line);
+            var b = JSON.parse(bizRaw[k]);
             if (b.business_id && b.name) {
               bizNames[b.business_id] = b.name;
             }
@@ -131,7 +131,7 @@
         }
 
         document.getElementById("status").textContent =
-          `Loaded ${reviews.length} reviews, ${dishes.length} dishes, ${Object.keys(bizNames).length} businesses. Ready to process.`;
+          "Loaded " + reviews.length + " reviews, " + dishes.length + " dishes, " + Object.keys(bizNames).length + " businesses. Ready to process.";
         document.getElementById("spinner").style.display = "none";
         document.getElementById("processBtn").disabled = false;
       }, 50);
@@ -146,58 +146,75 @@
       document.getElementById("status").textContent = "Processing data...";
       document.getElementById("spinner").style.display = "inline-block";
 
-      setTimeout(() => {
-        const dishStats = {};
-        const bizStats = {};
+      setTimeout(function () {
+        var dishStats = {};
+        var bizStats = {};
 
-        dishes.forEach(d => dishStats[d] = [0, 0]);
+        for (var i = 0; i < dishes.length; i++) {
+          dishStats[dishes[i]] = [0, 0];
+        }
 
-        for (const r of reviews) {
-          for (const dish of dishes) {
-            if (r.review.toLowerCase().includes(dish.toLowerCase())) {
-              let score = r.stars;
-              if (r.stars === 1 || r.stars === 2) {
-                score *= (1 - r.useful * 0.005);
-              } else if (r.stars === 4 || r.stars === 5) {
-                score *= (1 + r.useful * 0.005);
+        for (var r = 0; r < reviews.length; r++) {
+          var rev = reviews[r];
+          for (var d = 0; d < dishes.length; d++) {
+            var dish = dishes[d];
+            if (rev.review.toLowerCase().indexOf(dish.toLowerCase()) !== -1) {
+              var score = rev.stars;
+              if (score === 1 || score === 2) {
+                score *= (1 - rev.useful * 0.005);
+              } else if (score === 4 || score === 5) {
+                score *= (1 + rev.useful * 0.005);
               }
 
               dishStats[dish][0] += score;
               dishStats[dish][1] += 1;
 
-              if (!bizStats[r.business_id]) bizStats[r.business_id] = {};
-              if (!bizStats[r.business_id][dish]) bizStats[r.business_id][dish] = [0, 0];
-              bizStats[r.business_id][dish][0] += r.stars;
-              bizStats[r.business_id][dish][1] += 1;
+              if (!bizStats[rev.business_id]) {
+                bizStats[rev.business_id] = {};
+              }
+              if (!bizStats[rev.business_id][dish]) {
+                bizStats[rev.business_id][dish] = [0, 0];
+              }
+              bizStats[rev.business_id][dish][0] += rev.stars;
+              bizStats[rev.business_id][dish][1] += 1;
             }
           }
         }
 
-        let output = '=== Overall Dish Ratings ===\n';
-        const overall = Object.entries(dishStats)
-          .filter(([_, [_, count]]) => count > 0)
-          .map(([dish, [score, count]]) => [dish, score / count, count])
-          .sort((a, b) => b[1] - a[1]);
-
-        for (const [dish, avg, count] of overall) {
-          output += `${dish}: avg score = ${avg.toFixed(2)}, count = ${count}\n`;
+        var output = '=== Overall Dish Ratings ===\n';
+        var sorted = [];
+        for (var dish in dishStats) {
+          if (dishStats[dish][1] > 0) {
+            sorted.push([dish, dishStats[dish][0] / dishStats[dish][1], dishStats[dish][1]]);
+          }
+        }
+        sorted.sort(function (a, b) { return b[1] - a[1]; });
+        for (var i = 0; i < sorted.length; i++) {
+          output += sorted[i][0] + ": avg score = " + sorted[i][1].toFixed(2) + ", count = " + sorted[i][2] + "\n";
         }
 
         output += '\n=== Business-specific Dish Ratings ===\n';
-        for (const [bizId, dishes] of Object.entries(bizStats)) {
-          const name = bizNames[bizId] || bizId;
-          output += `\nBusiness: ${name}\n`;
-          for (const [dish, [score, count]] of Object.entries(dishes)) {
-            const avg = score / count;
-            output += `  ${dish}: avg score = ${avg.toFixed(2)}, count = ${count}\n`;
+        for (var bizId in bizStats) {
+          var name = bizNames[bizId] || bizId;
+          output += "\nBusiness: " + name + "\n";
+          for (var d in bizStats[bizId]) {
+            var score = bizStats[bizId][d][0];
+            var count = bizStats[bizId][d][1];
+            output += "  " + d + ": avg score = " + (score / count).toFixed(2) + ", count = " + count + "\n";
           }
         }
 
-        document.getElementById('output').textContent = output;
+        document.getElementById("output").textContent = output;
         document.getElementById("status").textContent = "Processing complete.";
         document.getElementById("spinner").style.display = "none";
       }, 50);
     }
+
+    // Attach listeners AFTER everything loads
+    window.addEventListener('DOMContentLoaded', function () {
+      document.getElementById("loadBtn").onclick = loadData;
+      document.getElementById("processBtn").onclick = processData;
+    });
   </script>
 </body>
 </html>
