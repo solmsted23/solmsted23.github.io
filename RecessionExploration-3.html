@@ -289,8 +289,8 @@ function hideTooltip() {
         })
         .attr("stroke", "#fff")
         .on("mouseover", function (event, d) {
-            const rate = dataByFIPS[d.id];
-            if (rate !== undefined) {
+            const info = dataByFIPS[d.id];
+            if (info !== undefined) {
             showTooltip(`
              <strong>${info.County}, ${info.State}</strong><br/>
             <strong>Unemployment Rate:</strong> ${info.UnemploymentRate.toFixed(1)}%<br/>
