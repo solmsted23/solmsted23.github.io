@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Dish Sentiment Analyzer</title>
   <style>
     textarea { width: 100%; height: 200px; }
@@ -46,100 +46,96 @@
   </div>
 
   <script>
-  function startProcessing() {
-    document.getElementById("status").textContent = "In progress...";
-    document.getElementById("spinner").style.display = "inline-block";
+    function startProcessing() {
+      // Show in-progress status and spinner immediately
+      document.getElementById("status").textContent = "In progress...";
+      document.getElementById("spinner").style.display = "inline-block";
 
-    setTimeout(() => {
-      processData();
-      document.getElementById("status").textContent = "Done!";
-      document.getElementById("spinner").style.display = "none";
-    }, 10);
-  }
+      // Let browser repaint before heavy processing
+      setTimeout(() => {
+        processData();
 
-  function processData() {
-    const reviewsRaw = document.getElementById('jsonInput').value.trim().split('\n');
-    const dishesRaw = document.getElementById('dishInput').value.trim().split('\n');
-    const bizMapRaw = document.getElementById('bizMapInput').value.trim().split('\n');
-
-    const reviews = [];
-    const dishes = dishesRaw.map(d => d.trim()).filter(Boolean);
-    const bizNames = {};
-    const dishStats = {};
-    const bizStats = {};
-
-    // Parse reviews with nested votes
-    for (let line of reviewsRaw) {
-      try {
-        const data = JSON.parse(line);
-        reviews.push({
-          review: data.text || '',
-          stars: data.stars || 0,
-          useful: (data.votes && data.votes.useful) || 0,   // Nested votes.useful
-          business_id: data.business_id || ''
-        });
-      } catch (e) {
-        console.warn("Bad review JSON", e);
-      }
+        // After processing, update status and hide spinner
+        document.getElementById("status").textContent = "Done!";
+        document.getElementById("spinner").style.display = "none";
+      }, 0);
     }
 
-    // Parse business mapping but only keep business_id and name
-    for (let line of bizMapRaw) {
-      try {
-        const data = JSON.parse(line);
-        if (data.business_id && data.name) {
-          bizNames[data.business_id] = data.name;
-        }
-      } catch (e) {
-        console.warn("Bad business map JSON", e);
+    function processData() {
+      const reviewsRaw = document.getElementById('jsonInput').value.trim().split('\n');
+      const dishesRaw = document.getElementById('dishInput').value.trim().split('\n');
+      const bizMapRaw = document.getElementById('bizMapInput').value.trim().split('\n');
+      
+      const reviews = [];
+      const dishes = dishesRaw.map(d => d.trim()).filter(Boolean);
+      const bizNames = {};
+      const dishStats = {};
+      const bizStats = {};
+      
+      for (let line of reviewsRaw) {
+        try {
+          const data = JSON.parse(line);
+          reviews.push({
+            review: data.text || '',
+            stars: data.stars || 0,
+            useful: (data.votes && data.votes.useful) || 0,
+            business_id: data.business_id || ''
+          });
+        } catch (e) { console.warn("Bad review JSON", e); }
       }
-    }
 
-    dishes.forEach(d => dishStats[d] = [0, 0]);
+      for (let line of bizMapRaw) {
+        try {
+          const data = JSON.parse(line);
+          if (data.business_id && data.name) bizNames[data.business_id] = data.name;
+        } catch (e) { console.warn("Bad business map JSON", e); }
+      }
 
-    for (const r of reviews) {
-      for (const dish of dishes) {
-        if (r.review.toLowerCase().includes(dish.toLowerCase())) {
-          let score = r.stars;
-          if (r.stars === 1 || r.stars === 2) {
-            score *= (1 - r.useful * 0.005);
-          } else if (r.stars === 4 || r.stars === 5) {
-            score *= (1 + r.useful * 0.005);
+      dishes.forEach(d => dishStats[d] = [0, 0]);
+
+      for (const r of reviews) {
+        for (const dish of dishes) {
+          if (r.review.toLowerCase().includes(dish.toLowerCase())) {
+            let score = r.stars;
+            if (r.stars === 1 || r.stars === 2) {
+              score *= (1 - r.useful * 0.005);
+            } else if (r.stars === 4 || r.stars === 5) {
+              score *= (1 + r.useful * 0.005);
+            }
+
+            dishStats[dish][0] += score;
+            dishStats[dish][1] += 1;
+
+            if (!bizStats[r.business_id]) bizStats[r.business_id] = {};
+            if (!bizStats[r.business_id][dish]) bizStats[r.business_id][dish] = [0, 0];
+            bizStats[r.business_id][dish][0] += r.stars;
+            bizStats[r.business_id][dish][1] += 1;
           }
-
-          dishStats[dish][0] += score;
-          dishStats[dish][1] += 1;
-
-          if (!bizStats[r.business_id]) bizStats[r.business_id] = {};
-          if (!bizStats[r.business_id][dish]) bizStats[r.business_id][dish] = [0, 0];
-          bizStats[r.business_id][dish][0] += r.stars;
-          bizStats[r.business_id][dish][1] += 1;
         }
       }
-    }
 
-    let output = '=== Overall Dish Ratings ===\n';
-    const overall = Object.entries(dishStats)
-      .filter(([_, [_, count]]) => count > 0)
-      .map(([dish, [score, count]]) => [dish, score / count, count])
-      .sort((a, b) => b[1] - a[1]);
+      let output = '=== Overall Dish Ratings ===\n';
+      const overall = Object.entries(dishStats)
+        .filter(([_, [_, count]]) => count > 0)
+        .map(([dish, [score, count]]) => [dish, score / count, count])
+        .sort((a, b) => b[1] - a[1]);
 
-    for (const [dish, avg, count] of overall) {
-      output += `${dish}: avg score = ${avg.toFixed(2)}, count = ${count}\n`;
-    }
-
-    output += '\n=== Business-specific Dish Ratings ===\n';
-    for (const [bizId, dishes] of Object.entries(bizStats)) {
-      const name = bizNames[bizId] || bizId;
-      output += `\nBusiness: ${name}\n`;
-      for (const [dish, [score, count]] of Object.entries(dishes)) {
-        const avg = score / count;
-        output += `  ${dish}: avg score = ${avg.toFixed(2)}, count = ${count}\n`;
+      for (const [dish, avg, count] of overall) {
+        output += `${dish}: avg score = ${avg.toFixed(2)}, count = ${count}\n`;
       }
-    }
 
-    document.getElementById('output').textContent = output;
-  }
-</script>
+      output += '\n=== Business-specific Dish Ratings ===\n';
+      for (const [bizId, dishes] of Object.entries(bizStats)) {
+        const name = bizNames[bizId] || bizId;
+        output += `\nBusiness: ${name}\n`;
+        for (const [dish, [score, count]] of Object.entries(dishes)) {
+          const avg = score / count;
+          output += `  ${dish}: avg score = ${avg.toFixed(2)}, count = ${count}\n`;
+        }
+      }
+
+      document.getElementById('output').textContent = output;
+    }
+  </script>
 </body>
 </html>
