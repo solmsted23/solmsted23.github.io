@@ -286,7 +286,13 @@ function hideTooltip() {
         .on("mouseover", function (event, d) {
             const rate = dataByFIPS[d.id];
             if (rate !== undefined) {
-            showTooltip(`Unemployment Rate: <strong>${rate.toFixed(1)}%</strong>`, event);
+            showTooltip(`
+            <strong>${d.County}, ${d.State}</strong><br/>
+            <strong>Unemployment Rate:</strong> ${+d.UnemploymentRate}%<br/>
+            <strong>Total Labor Force:</strong> ${(+d.TotalLaborForce).toLocaleString()}<br/>
+            <strong>Employed:</strong> ${(+d.Employed).toLocaleString()}<br/>
+            <strong>Unemployed:</strong> ${(+d.Unemployed).toLocaleString()}
+            `, event);
             }
         })
         .on("mousemove", function (event) {
