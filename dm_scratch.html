@@ -7,11 +7,27 @@
     textarea { width: 100%; height: 200px; }
     pre { background: #f0f0f0; padding: 1em; overflow-x: auto; }
     .container { max-width: 900px; margin: auto; }
+    #status { font-weight: bold; margin-top: 10px; }
+    #spinner {
+      display: none;
+      margin-left: 10px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #555;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Dish Sentiment Analyzer</h1>
+
     <label for="jsonInput">Paste Yelp Reviews (JSON lines):</label>
     <textarea id="jsonInput" placeholder='Paste JSON objects here (one per line)'></textarea>
 
@@ -21,19 +37,27 @@
     <label for="bizMapInput">Business Name Mapping (JSON, one per line):</label>
     <textarea id="bizMapInput" placeholder='{"business_id": "abc123", "name": "Taco Palace"}'></textarea>
 
-    <button onclick="processData()">Process</button>
+    <button onclick="startProcessing()">Process</button>
+    <div id="status">Idle</div>
+    <div id="spinner"></div>
 
     <h2>Results</h2>
     <pre id="output"></pre>
   </div>
 
   <script>
+    function startProcessing() {
+      document.getElementById("status").textContent = "In progress...";
+      document.getElementById("spinner").style.display = "inline-block";
+
+      setTimeout(() => {
+        processData();
+        document.getElementById("status").textContent = "Done!";
+        document.getElementById("spinner").style.display = "none";
+      }, 10);
+    }
+
     function processData() {
-        document.getElementById("status").textContent = "In progress...";
-        setTimeout(() => {
-            processData();
-            document.getElementById("status").textContent = ""; // Optional: Clear status after processing
-        }, 0);
       const reviewsRaw = document.getElementById('jsonInput').value.trim().split('\n');
       const dishesRaw = document.getElementById('dishInput').value.trim().split('\n');
       const bizMapRaw = document.getElementById('bizMapInput').value.trim().split('\n');
