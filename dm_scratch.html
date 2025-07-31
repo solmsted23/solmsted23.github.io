@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Dish Sentiment Analyzer V2</title>
+  <title>Dish Sentiment Analyzer</title>
   <style>
     textarea {
       width: 100%;
@@ -93,7 +93,6 @@
       document.getElementById("spinner").style.display = "inline-block";
 
       setTimeout(() => {
-        // Clear previous data
         reviews = [];
         dishes = [];
         bizNames = {};
@@ -110,7 +109,7 @@
               business_id: data.business_id || ''
             });
           } catch (e) {
-            console.warn("Bad review JSON", e);
+            console.warn("Invalid review JSON line:", e);
           }
         }
 
@@ -118,21 +117,24 @@
         const dishesRaw = document.getElementById('dishInput').value.trim().split('\n');
         dishes = dishesRaw.map(d => d.trim()).filter(Boolean);
 
-        // Parse business map
-        const bizMapRaw = document.getElementById('bizMapInput').value.trim().split('\n');
-        for (let line of bizMapRaw) {
+        // Parse business name mapping
+        const bizRaw = document.getElementById('bizMapInput').value.trim().split('\n');
+        for (let line of bizRaw) {
           try {
-            const data = JSON.parse(line);
-            if (data.business_id && data.name) bizNames[data.business_id] = data.name;
+            const b = JSON.parse(line);
+            if (b.business_id && b.name) {
+              bizNames[b.business_id] = b.name;
+            }
           } catch (e) {
-            console.warn("Bad business map JSON", e);
+            console.warn("Invalid business map line:", e);
           }
         }
 
-        document.getElementById("status").textContent = `Loaded ${reviews.length} reviews, ${dishes.length} dishes, ${Object.keys(bizNames).length} businesses. Ready to process.`;
+        document.getElementById("status").textContent =
+          `Loaded ${reviews.length} reviews, ${dishes.length} dishes, ${Object.keys(bizNames).length} businesses. Ready to process.`;
         document.getElementById("spinner").style.display = "none";
         document.getElementById("processBtn").disabled = false;
-      }, 10);
+      }, 50);
     }
 
     function processData() {
@@ -194,7 +196,7 @@
         document.getElementById('output').textContent = output;
         document.getElementById("status").textContent = "Processing complete.";
         document.getElementById("spinner").style.display = "none";
-      }, 10);
+      }, 50);
     }
   </script>
 </body>
