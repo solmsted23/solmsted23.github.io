@@ -113,9 +113,9 @@
 
   <div id="top-right-ui">
     <div id="nav-indicators">
+      <div class="nav-rect"></div>
+      <div class="nav-rect"></div>
       <div class="nav-rect active"></div>
-      <div class="nav-rect"></div>
-      <div class="nav-rect"></div>
     </div>
     <button id="next-page-btn" onclick="location.href='https://solmsted23.github.io/RecessionExploration-1'">Start Over >></button>
   </div>
@@ -143,6 +143,19 @@
     <svg id="map" width="600" height="400"></svg>
     <svg id="bar" width="600" height="400"></svg>
   </div>
+
+  <div id="tooltip" style="
+    position: absolute;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    pointer-events: none;
+    font-size: 14px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+    display: none;
+    z-index: 1000;
+  "></div>
 
   <script>
     const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
@@ -208,15 +221,15 @@
         updateVisuals(year);
       });
 
-      let yearIndex = 0;
-      const years = d3.range(2007, 2022);
-      setInterval(() => {
-        const year = years[yearIndex % years.length];
-        document.getElementById("slider").value = year;
-        document.getElementById("slider-value").textContent = year;
-        updateVisuals(year);
-        yearIndex++;
-      }, 2000);
+    //   let yearIndex = 0;
+    //   const years = d3.range(2007, 2022);
+    //   setInterval(() => {
+    //     const year = years[yearIndex % years.length];
+    //     document.getElementById("slider").value = year;
+    //     document.getElementById("slider-value").textContent = year;
+    //     updateVisuals(year);
+    //     yearIndex++;
+    //   }, 2000);
 
       updateVisuals(2007);
     });
@@ -323,17 +336,6 @@ function hideTooltip() {
         .on("mouseout", hideTooltip);
     }
   </script>
-  <div id="tooltip" style="
-  position: absolute;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  pointer-events: none;
-  font-size: 14px;
-  box-shadow: 0 0 8px rgba(0,0,0,0.2);
-  display: none;
-  z-index: 1000;
-  "></div>
+  
 </body>
 </html>
