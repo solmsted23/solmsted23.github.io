@@ -236,9 +236,8 @@
     cpiCategoryData = cpiIndexData;
     globalMaxChange = d3.max(cpiCategoryData, d => d.Change);
     
-    setInterval(autoplay, 20000000);
-    createCharts(); // call after load
-    autoplay(); // start animation
+    createCharts();
+    autoplay(); 
     });
 
     function updateAnnotations(year) {
@@ -332,9 +331,9 @@
     }
 
     function autoplay() {
-    const yearsLeft = [2007, 2008, 2009];
-    const yearsRight = [2019, 2020, 2021];
-    let i = 0;
+        const yearsLeft = [2007, 2008, 2009];
+        const yearsRight = [2019, 2020, 2021];
+        let i = 0;
 
     setInterval(() => {
         const yearLeft = yearsLeft[i % yearsLeft.length];
@@ -351,7 +350,7 @@
         drawPanel("Right", yearRight);
 
         i++;
-    }, 2000);
+    }, 20000);
     }
 
 
