@@ -237,8 +237,20 @@
     globalMaxChange = d3.max(cpiCategoryData, d => d.Change);
     
     setInterval(autoplay, 20000);
-    createCharts(); // call after load
-    autoplay(); // start animation
+    createCharts();
+
+    const initialLeft = 2007;
+    const initialRight = 2019;
+    document.getElementById("slider").value = initialLeft;
+    document.getElementById("slider2").value = initialRight;
+    document.getElementById("slider-value").textContent = initialLeft;
+    document.getElementById("slider-value2").textContent = initialRight;
+    updateAnnotations(initialLeft);
+    updateAnnotations2(initialRight);
+    drawPanel("Left", initialLeft);
+    drawPanel("Right", initialRight);
+
+    autoplay();
     });
 
     function updateAnnotations(year) {
