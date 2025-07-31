@@ -29,6 +29,11 @@
 
   <script>
     function processData() {
+        document.getElementById("status").textContent = "In progress...";
+        setTimeout(() => {
+            processData();
+            document.getElementById("status").textContent = ""; // Optional: Clear status after processing
+        }, 0);
       const reviewsRaw = document.getElementById('jsonInput').value.trim().split('\n');
       const dishesRaw = document.getElementById('dishInput').value.trim().split('\n');
       const bizMapRaw = document.getElementById('bizMapInput').value.trim().split('\n');
