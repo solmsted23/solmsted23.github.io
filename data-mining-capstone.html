@@ -1,17 +1,19 @@
-layout: page
-title: "data-mining-capstone"
-permalink: https://solmsted23/data-mining-capstone.github.io
-
-
 <!DOCTYPE html>
 <meta charset="utf-8">
 <script src="https://d3js.org/d3.v4.js"></script>
 
-<h3>Paste your JSON below (e.g. [{"date": "2000-01-01", "value": 8500}, ...])</h3>
-<textarea id="jsonInput" rows="10" cols="60">[
-  {"date": "2000-01-01", "value": 8500},
-  {"date": "2000-01-02", "value": 8600},
-  {"date": "2000-01-03", "value": 8700}
+<h3>Paste your Yelp reviews below (e.g. [{"date": "2007-05-17", "stars": 5}, ...])</h3>
+<textarea id="jsonInput" rows="10" cols="100">[
+  {
+    "votes": {"funny": 0, "useful": 2, "cool": 1},
+    "user_id": "Xqd0DzHaiyRqVH3WRG7hzg",
+    "review_id": "15SdjuK7DmYqUAj6rjGowg",
+    "stars": 5,
+    "date": "2007-05-17",
+    "text": "dr. goldberg offers everything i look for in a general practitioner...",
+    "type": "review",
+    "business_id": "vcNAWiLM4dR7D2nwwJ7nCA"
+  }
 ]</textarea><br>
 <button onclick="renderChart()">Load Chart</button>
 
@@ -19,32 +21,32 @@ permalink: https://solmsted23/data-mining-capstone.github.io
 
 <script>
 function renderChart() {
-  // Clear previous SVG
   d3.select("#my_dataviz").selectAll("*").remove();
 
-  // Parse input JSON
   var input = document.getElementById("jsonInput").value;
   var rawData;
   try {
     rawData = JSON.parse(input);
   } catch (e) {
-    alert("Invalid JSON");
+    alert("Invalid JSON format");
     return;
   }
 
-  // Format the data
   var parseDate = d3.timeParse("%Y-%m-%d");
   var data = rawData.map(d => ({
     date: parseDate(d.date),
-    value: +d.value
-  }));
+    stars: +d.stars
+  })).filter(d => d.date && !isNaN(d.stars));  // Filter out bad rows
 
-  // Set dimensions
+  if (data.length === 0) {
+    alert("No valid data to plot.");
+    return;
+  }
+
   var margin = {top: 10, right: 30, bottom: 30, left: 60},
-      width = 460 - margin.left - margin.right,
+      width = 600 - margin.left - margin.right,
       height = 400 - margin.top - margin.bottom;
 
-  // Create SVG
   var svg = d3.select("#my_dataviz")
     .append("svg")
       .attr("width", width + margin.left + margin.right)
@@ -52,7 +54,6 @@ function renderChart() {
     .append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-  // X scale
   var x = d3.scaleTime()
     .domain(d3.extent(data, d => d.date))
     .range([0, width]);
@@ -60,36 +61,30 @@ function renderChart() {
     .attr("transform", "translate(0," + height + ")")
     .call(d3.axisBottom(x));
 
-  // Y scale
   var y = d3.scaleLinear()
-    .domain([
-      d3.min(data, d => d.value) * 0.95,
-      d3.max(data, d => d.value) * 1.05
-    ])
+    .domain([0, 5])
     .range([height, 0]);
   svg.append("g")
     .call(d3.axisLeft(y));
 
-  // Line path
   svg.append("path")
-    .datum(data)
+    .datum(data.sort((a, b) => a.date - b.date))
     .attr("fill", "none")
-    .attr("stroke", "#69b3a2")
-    .attr("stroke-width", 1.5)
+    .attr("stroke", "#ff7f0e")
+    .attr("stroke-width", 2)
     .attr("d", d3.line()
       .x(d => x(d.date))
-      .y(d => y(d.value))
+      .y(d => y(d.stars))
     );
 
-  // Dots
   svg.append("g")
-    .selectAll("dot")
+    .selectAll("circle")
     .data(data)
     .enter()
     .append("circle")
       .attr("cx", d => x(d.date))
-      .attr("cy", d => y(d.value))
-      .attr("r", 5)
-      .attr("fill", "#69b3a2");
+      .attr("cy", d => y(d.stars))
+      .attr("r", 4)
+      .attr("fill", "#ff7f0e");
 }
 </script>
