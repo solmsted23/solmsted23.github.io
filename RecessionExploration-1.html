@@ -201,7 +201,7 @@
         document.getElementById("slider-value").textContent = year;
         updateVisuals(year);
         yearIndex++;
-      }, 6000);
+      }, 2000);
 
       updateVisuals(2007);
     });
@@ -255,7 +255,8 @@
       const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
       const x = d3.scaleBand().domain(cpi.map(d => d.Category)).range([0, width]).padding(0.2);
-      const y = d3.scaleLinear().domain([0, globalMaxChange]).range([height, 0]);
+      const yExtent = d3.extent(cpi, d => d.Change);
+      const y = d3.scaleLinear().domain(yExtent).nice().range([bh, 0]);
 
       g.append("g").call(d3.axisLeft(y));
       g.append("g")
