@@ -481,7 +481,8 @@
     cpiTotals = cpiData;
     cpiCategoryData = cpiIndexData;
     globalMaxChange = d3.max(cpiCategoryData, d => d.Change);
-
+    
+    setInterval(autoplay, 10000);
     createCharts(); // call after load
     autoplay(); // start animation
     });
