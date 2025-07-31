@@ -295,9 +295,133 @@
 
 
 
-const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
-const yearsLeft = [2008, 2009, 2010];
-const yearsRight = [2019, 2020, 2021];
+// const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
+// const yearsLeft = [2008, 2009, 2010];
+// const yearsRight = [2019, 2020, 2021];
+
+// const categoryColors = {
+//   "All food": "#4B0082",
+//   "Food away from home": "#FF00FF",
+//   "Food at home": "#8A2BE2",
+//   "Meats, poultry, and fish": "#FF0000",
+//   "Meats": "#CD5C5C",
+//   "Beef and veal": "#800000",
+//   "Pork": "#DC143C",
+//   "Other meats": "#FFA07A",
+//   "Poultry": "#FF4500",
+//   "Fish and seafood": "#FF6347",
+//   "Eggs": "#FFD700",
+//   "Dairy products": "#FFFF00",
+//   "Fats and oils": "#B8860B",
+//   "Fruits and vegetables": "#48D1CC",
+//   "Fresh fruits and vegetables": "#00FF00",
+//   "Fresh fruits": "#00FFFF",
+//   "Fresh vegetables": "#228B22",
+//   "Processed fruits and vegetables": "#00FA9A",
+//   "Sugar and sweets": "#1E90FF",
+//   "Cereals and bakery products": "#4169E1",
+//   "Nonalcoholic beverages": "#F4A460",
+//   "Other foods": "#A52A2A"
+// };
+
+// Promise.all([
+//   d3.json(mapUrl),
+//   d3.csv("jobs_2007-2021_2.csv", d => ({
+//     FIPS: d.FIPS.padStart(5, '0'),
+//     Year: +d.Year,
+//     UnemploymentRate: +d.UnemploymentRate
+//   })),
+//   d3.csv("cpi_index.csv", d => ({
+//     Year: +d.Year,
+//     Category: d["Consumer Price Index item"],
+//     Change: +d["Percent change"]
+//   }))
+// ]).then(([us, jobData, cpiData]) => {
+//   const maxChange = d3.max(cpiData, d => d.Change);
+
+//   drawPanel("Left", yearsLeft, us, jobData, cpiData, maxChange);
+//   drawPanel("Right", yearsRight, us, jobData, cpiData, maxChange);
+// });
+
+// function drawPanel(side, years, us, jobData, cpiData, maxChange) {
+//   let yearIndex = 0;
+//   const mapSvg = d3.select(`#map${side}`);
+//   const barSvg = d3.select(`#bar${side}`);
+//   const width = 600, height = 400;
+//   const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(800);
+//   const path = d3.geoPath().projection(projection);
+
+//   const colorScale = d3.scaleSequential(d3.interpolateViridis)
+//     .domain(d3.extent(jobData, d => d.UnemploymentRate).reverse());
+
+//   function render(year) {
+//     const yearJobs = jobData.filter(d => d.Year === year);
+//     const dataByFIPS = Object.fromEntries(yearJobs.map(d => [d.FIPS, d.UnemploymentRate]));
+//     const counties = topojson.feature(us, us.objects.counties).features;
+
+//     mapSvg.selectAll("*").remove();
+//     mapSvg.append("g")
+//       .selectAll("path")
+//       .data(counties)
+//       .join("path")
+//       .attr("d", path)
+//       .attr("fill", d => {
+//         const val = dataByFIPS[d.id];
+//         return val !== undefined ? colorScale(val) : "#ccc";
+//       })
+//       .attr("stroke", "#fff");
+
+//     const cpi = cpiData.filter(d => d.Year === year);
+//     const margin = {top: 20, right: 20, bottom: 80, left: 50};
+//     const bw = width - margin.left - margin.right;
+//     const bh = height - margin.top - margin.bottom;
+
+//     barSvg.selectAll("*").remove();
+//     const g = barSvg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+//     const x = d3.scaleBand().domain(cpi.map(d => d.Category)).range([0, bw]).padding(0.2);
+//     const y = d3.scaleLinear().domain([0, maxChange]).range([bh, 0]);
+
+//     g.append("g").call(d3.axisLeft(y));
+//     g.append("g")
+//       .attr("transform", `translate(0,${bh})`)
+//       .call(d3.axisBottom(x))
+//       .selectAll("text")
+//       .attr("transform", "rotate(-45)")
+//       .style("text-anchor", "end");
+
+//     g.selectAll("rect")
+//       .data(cpi)
+//       .join("rect")
+//       .attr("x", d => x(d.Category))
+//       .attr("y", d => y(d.Change))
+//       .attr("width", x.bandwidth())
+//       .attr("height", d => bh - y(d.Change))
+//       .attr("fill", d => categoryColors[d.Category] || "#ccc");
+//   }
+
+//   render(years[0]);
+
+//   setInterval(() => {
+//     yearIndex = (yearIndex + 1) % years.length;
+//     render(years[yearIndex]);
+//   }, 2000);
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    const mapUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
 
 const categoryColors = {
   "All food": "#4B0082",
@@ -324,55 +448,107 @@ const categoryColors = {
   "Other foods": "#A52A2A"
 };
 
-Promise.all([
-  d3.json(mapUrl),
-  d3.csv("jobs_2007-2021_2.csv", d => ({
-    FIPS: d.FIPS.padStart(5, '0'),
-    Year: +d.Year,
-    UnemploymentRate: +d.UnemploymentRate
-  })),
-  d3.csv("cpi_index.csv", d => ({
-    Year: +d.Year,
-    Category: d["Consumer Price Index item"],
-    Change: +d["Percent change"]
-  }))
-]).then(([us, jobData, cpiData]) => {
-  const maxChange = d3.max(cpiData, d => d.Change);
+    let globalMaxChange = 0;
+    let us, jobsData, unemploymentTotals, cpiTotals, cpiCategoryData;
 
-  drawPanel("Left", yearsLeft, us, jobData, cpiData, maxChange);
-  drawPanel("Right", yearsRight, us, jobData, cpiData, maxChange);
-});
+    Promise.all([
+    d3.json(mapUrl),
+    d3.csv("jobs_2007-2021_2.csv", d => ({
+        FIPS: d.FIPS.padStart(5, '0'),
+        State: d.State,
+        County: d.County,
+        EmploymentStatus: d.EmploymentStatus,
+        Year: +d.Year,
+        UnemploymentRate: +d.UnemploymentRate
+    })),
+    d3.csv("US_UnemploymentTotals.csv", d => ({
+        Year: +d.Year,
+        TotalUnemployment: +d.UnemploymentRate
+    })),
+    d3.csv("cpi_total.csv", d => ({
+        Year: +d.Year,
+        TotalCPI: +d.PercentChange
+    })),
+    d3.csv("cpi_index.csv", d => ({
+        Year: +d.Year,
+        Category: d["Consumer Price Index item"],
+        Change: +d["Percent change"]
+    }))
+    ]).then(([usData, jobData, unemploymentData, cpiData, cpiIndexData]) => {
+    us = usData;
+    jobsData = jobData;
+    unemploymentTotals = unemploymentData;
+    cpiTotals = cpiData;
+    cpiCategoryData = cpiIndexData;
+    globalMaxChange = d3.max(cpiCategoryData, d => d.Change);
 
-function drawPanel(side, years, us, jobData, cpiData, maxChange) {
-  let yearIndex = 0;
-  const mapSvg = d3.select(`#map${side}`);
-  const barSvg = d3.select(`#bar${side}`);
-  const width = 600, height = 400;
-  const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(800);
-  const path = d3.geoPath().projection(projection);
+    createCharts(); // call after load
+    autoplay(); // start animation
+    });
 
-  const colorScale = d3.scaleSequential(d3.interpolateViridis)
-    .domain(d3.extent(jobData, d => d.UnemploymentRate).reverse());
+    function updateAnnotations(year) {
+    const unemployment = unemploymentTotals.find(d => d.Year === year);
+    const cpi = cpiTotals.find(d => d.Year === year);
+    document.getElementById("year-text").textContent = year;
+    document.getElementById("unemploymentText").textContent = unemployment ? `${unemployment.TotalUnemployment.toFixed(1)}%` : "--";
+    document.getElementById("cpiText").textContent = cpi ? `${cpi.TotalCPI.toFixed(1)}%` : "--";
+    }
 
-  function render(year) {
-    const yearJobs = jobData.filter(d => d.Year === year);
+    function updateAnnotations2(year) {
+    const unemployment = unemploymentTotals.find(d => d.Year === year);
+    const cpi = cpiTotals.find(d => d.Year === year);
+    document.getElementById("year-text-2").textContent = year;
+    document.getElementById("unemploymentText2").textContent = unemployment ? `${unemployment.TotalUnemployment.toFixed(1)}%` : "--";
+    document.getElementById("cpiText2").textContent = cpi ? `${cpi.TotalCPI.toFixed(1)}%` : "--";
+    }
+
+    function createCharts() {
+    const container = document.createElement("div");
+    container.style.display = "flex";
+    container.style.justifyContent = "space-around";
+    container.style.marginTop = "60px";
+
+    ["Left", "Right"].forEach(side => {
+        const panel = document.createElement("div");
+        panel.style.display = "flex";
+        panel.style.flexDirection = "column";
+        panel.innerHTML = `
+        <svg id="map${side}" width="600" height="400"></svg>
+        <svg id="bar${side}" width="600" height="400" style="margin-top: 20px;"></svg>
+        `;
+        container.appendChild(panel);
+    });
+
+    document.body.insertBefore(container, document.body.querySelector("script"));
+    }
+
+    function drawPanel(side, year) {
+    const mapSvg = d3.select(`#map${side}`);
+    const barSvg = d3.select(`#bar${side}`);
+    const width = 600, height = 400;
+    const projection = d3.geoAlbersUsa().translate([width / 2, height / 2]).scale(800);
+    const path = d3.geoPath().projection(projection);
+    const colorScale = d3.scaleSequential(d3.interpolateViridis)
+        .domain(d3.extent(jobsData, d => d.UnemploymentRate).reverse());
+
+    const yearJobs = jobsData.filter(d => d.Year === year);
     const dataByFIPS = Object.fromEntries(yearJobs.map(d => [d.FIPS, d.UnemploymentRate]));
     const counties = topojson.feature(us, us.objects.counties).features;
 
     mapSvg.selectAll("*").remove();
     mapSvg.append("g")
-      .selectAll("path")
-      .data(counties)
-      .join("path")
-      .attr("d", path)
-      .attr("fill", d => {
+        .selectAll("path")
+        .data(counties)
+        .join("path")
+        .attr("d", path)
+        .attr("fill", d => {
         const val = dataByFIPS[d.id];
         return val !== undefined ? colorScale(val) : "#ccc";
-      })
-      .attr("stroke", "#fff");
+        })
+        .attr("stroke", "#fff");
 
-    const cpi = cpiData.filter(d => d.Year === year);
-    const margin = {top: 20, right: 20, bottom: 80, left: 50};
+    const cpi = cpiCategoryData.filter(d => d.Year === year);
+    const margin = { top: 20, right: 20, bottom: 80, left: 50 };
     const bw = width - margin.left - margin.right;
     const bh = height - margin.top - margin.bottom;
 
@@ -380,48 +556,48 @@ function drawPanel(side, years, us, jobData, cpiData, maxChange) {
     const g = barSvg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     const x = d3.scaleBand().domain(cpi.map(d => d.Category)).range([0, bw]).padding(0.2);
-    const y = d3.scaleLinear().domain([0, maxChange]).range([bh, 0]);
+    const y = d3.scaleLinear().domain([0, globalMaxChange]).range([bh, 0]);
 
     g.append("g").call(d3.axisLeft(y));
     g.append("g")
-      .attr("transform", `translate(0,${bh})`)
-      .call(d3.axisBottom(x))
-      .selectAll("text")
-      .attr("transform", "rotate(-45)")
-      .style("text-anchor", "end");
+        .attr("transform", `translate(0,${bh})`)
+        .call(d3.axisBottom(x))
+        .selectAll("text")
+        .attr("transform", "rotate(-45)")
+        .style("text-anchor", "end");
 
     g.selectAll("rect")
-      .data(cpi)
-      .join("rect")
-      .attr("x", d => x(d.Category))
-      .attr("y", d => y(d.Change))
-      .attr("width", x.bandwidth())
-      .attr("height", d => bh - y(d.Change))
-      .attr("fill", d => categoryColors[d.Category] || "#ccc");
-  }
+        .data(cpi)
+        .join("rect")
+        .attr("x", d => x(d.Category))
+        .attr("y", d => y(d.Change))
+        .attr("width", x.bandwidth())
+        .attr("height", d => bh - y(d.Change))
+        .attr("fill", d => categoryColors[d.Category] || "#ccc");
+    }
 
-  render(years[0]);
+    function autoplay() {
+    const yearsLeft = [2007, 2008, 2009];
+    const yearsRight = [2019, 2020, 2021];
+    let i = 0;
 
-  setInterval(() => {
-    yearIndex = (yearIndex + 1) % years.length;
-    render(years[yearIndex]);
-  }, 2000);
-}
+    setInterval(() => {
+        const yearLeft = yearsLeft[i % yearsLeft.length];
+        const yearRight = yearsRight[i % yearsRight.length];
 
+        document.getElementById("slider").value = yearLeft;
+        document.getElementById("slider2").value = yearRight;
+        document.getElementById("slider-value").textContent = yearLeft;
+        document.getElementById("slider-value2").textContent = yearRight;
 
+        updateAnnotations(yearLeft);
+        updateAnnotations2(yearRight);
+        drawPanel("Left", yearLeft);
+        drawPanel("Right", yearRight);
 
-
-
-
-
-
-
-
-
-
-
-
-
+        i++;
+    }, 2000);
+    }
 
 
 
