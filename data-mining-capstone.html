@@ -1,100 +1,231 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<script src="https://d3js.org/d3.v4.js"></script>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dish Sentiment Analyzer</title>
+  <style>
+    textarea {
+      width: 100%;
+      height: 300px;
+      font-family: monospace;
+      font-size: 14px;
+      padding: 8px;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    pre {
+      background: #f0f0f0;
+      padding: 1em;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    #status {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    #spinner {
+      display: none;
+      margin-left: 10px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #555;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    label {
+      font-weight: bold;
+      margin-top: 15px;
+      display: block;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Dish Sentiment Analyzer</h1>
 
-<h3>Paste your Yelp reviews below (e.g. [{"date": "2007-05-17", "stars": 5}, ...])</h3>
-<textarea id="jsonInput" rows="10" cols="100">[
-  {
-    "votes": {"funny": 0, "useful": 2, "cool": 1},
-    "user_id": "Xqd0DzHaiyRqVH3WRG7hzg",
-    "review_id": "15SdjuK7DmYqUAj6rjGowg",
-    "stars": 5,
-    "date": "2007-05-17",
-    "text": "dr. goldberg offers everything i look for in a general practitioner...",
-    "type": "review",
-    "business_id": "vcNAWiLM4dR7D2nwwJ7nCA"
-  }
-]</textarea><br>
-<button onclick="renderChart()">Load Chart</button>
+    <label for="jsonInput">Paste Yelp Reviews (JSON lines):</label>
+    <textarea id="jsonInput" placeholder='Paste JSON review objects here (one per line)'></textarea>
 
-<div id="my_dataviz"></div>
+    <label for="dishInput">List of Dishes (one per line):</label>
+    <textarea id="dishInput" placeholder="guacamole&#10;tacos&#10;enchiladas"></textarea>
 
-<script>
-function renderChart() {
-  // Clear previous SVG
-  d3.select("#my_dataviz").selectAll("*").remove();
+    <label for="bizMapInput">Business Name Mapping (JSON, one per line):</label>
+    <textarea id="bizMapInput" placeholder='{"business_id": "abc123", "name": "Taco Palace"}'></textarea>
 
-  // Get raw input
-  var input = document.getElementById("jsonInput").value.trim();
+    <div>
+      <button id="loadBtn">Load Data</button>
+      <button id="processBtn" disabled>Process Data</button>
+    </div>
 
-  // Transform newline-separated JSON into a proper array of JSON
-  var jsonLines = input.split(/\r?\n/).filter(line => line.trim() !== '');
-  var wrappedJSON = "[" + jsonLines.join(",") + "]";
+    <div id="status">Idle</div>
+    <div id="spinner"></div>
 
-  var rawData;
-  try {
-    rawData = JSON.parse(wrappedJSON);
-  } catch (e) {
-    alert("Invalid JSON: " + e.message);
-    return;
-  }
+    <h2>Results</h2>
+    <pre id="output"></pre>
+  </div>
 
-  // Extract and format the data for visualization
-  var parseDate = d3.timeParse("%Y-%m-%d");
-  var data = rawData.map(d => ({
-    date: parseDate(d.date),
-    value: +d.stars  // You can change this to whatever metric you want to chart
-  }));
+  <script defer>
+    var reviews = [];
+    var dishes = [];
+    var bizNames = {};
 
-  // Set dimensions
-  var margin = {top: 10, right: 30, bottom: 30, left: 60},
-      width = 460 - margin.left - margin.right,
-      height = 400 - margin.top - margin.bottom;
+    function loadData() {
+      document.getElementById("status").textContent = "Loading data...";
+      document.getElementById("spinner").style.display = "inline-block";
 
-  // Create SVG
-  var svg = d3.select("#my_dataviz")
-    .append("svg")
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      setTimeout(function () {
+        reviews = [];
+        dishes = [];
+        bizNames = {};
 
-  // X scale
-  var x = d3.scaleTime()
-    .domain(d3.extent(data, d => d.date))
-    .range([0, width]);
-  svg.append("g")
-    .attr("transform", "translate(0," + height + ")")
-    .call(d3.axisBottom(x));
+        var reviewsRaw = document.getElementById('jsonInput').value.trim().split('\n');
+        for (var i = 0; i < reviewsRaw.length; i++) {
+          try {
+            var data = JSON.parse(reviewsRaw[i]);
+            reviews.push({
+              review: data.text || '',
+              stars: data.stars || 0,
+              useful: (data.votes && data.votes.useful) || 0,
+              business_id: data.business_id || ''
+            });
+          } catch (e) {
+            console.warn("Invalid review JSON line:", e);
+          }
+        }
 
-  // Y scale
-  var y = d3.scaleLinear()
-    .domain([0, 5])  // Stars go from 0 to 5
-    .range([height, 0]);
-  svg.append("g")
-    .call(d3.axisLeft(y));
+        var dishesRaw = document.getElementById('dishInput').value.trim().split('\n');
+        for (var j = 0; j < dishesRaw.length; j++) {
+          var d = dishesRaw[j].trim();
+          if (d) dishes.push(d);
+        }
 
-  // Line path
-  svg.append("path")
-    .datum(data)
-    .attr("fill", "none")
-    .attr("stroke", "#69b3a2")
-    .attr("stroke-width", 1.5)
-    .attr("d", d3.line()
-      .x(d => x(d.date))
-      .y(d => y(d.value))
-    );
+        var bizRaw = document.getElementById('bizMapInput').value.trim().split('\n');
+        for (var k = 0; k < bizRaw.length; k++) {
+          try {
+            var b = JSON.parse(bizRaw[k]);
+            if (b.business_id && b.name) {
+              bizNames[b.business_id] = b.name;
+            }
+          } catch (e) {
+            console.warn("Invalid business map line:", e);
+          }
+        }
 
-  // Dots
-  svg.append("g")
-    .selectAll("dot")
-    .data(data)
-    .enter()
-    .append("circle")
-      .attr("cx", d => x(d.date))
-      .attr("cy", d => y(d.value))
-      .attr("r", 5)
-      .attr("fill", "#69b3a2");
-}
-</script>
+        document.getElementById("status").textContent =
+          "Loaded " + reviews.length + " reviews, " + dishes.length + " dishes, " + Object.keys(bizNames).length + " businesses. Ready to process.";
+        document.getElementById("spinner").style.display = "none";
+        document.getElementById("processBtn").disabled = false;
+      }, 50);
+    }
+
+    function processData() {
+      if (reviews.length === 0 || dishes.length === 0) {
+        alert("Please load valid data first!");
+        return;
+      }
+
+      document.getElementById("status").textContent = "Processing data...";
+      document.getElementById("spinner").style.display = "inline-block";
+
+      setTimeout(function () {
+        var dishStats = {};
+        var bizStats = {};
+
+        for (var i = 0; i < dishes.length; i++) {
+          dishStats[dishes[i]] = [0, 0];
+        }
+
+        for (var r = 0; r < reviews.length; r++) {
+          var rev = reviews[r];
+          for (var d = 0; d < dishes.length; d++) {
+            var dish = dishes[d];
+            if (rev.review.toLowerCase().includes(dish.toLowerCase())) {
+              var score = rev.stars;
+              if (score === 1 || score === 2) {
+                score *= (1 - rev.useful * 0.005);
+              } else if (score === 4 || score === 5) {
+                score *= (1 + rev.useful * 0.005);
+              }
+
+              dishStats[dish][0] += score;
+              dishStats[dish][1] += 1;
+
+              if (!bizStats[rev.business_id]) {
+                bizStats[rev.business_id] = {};
+              }
+              if (!bizStats[rev.business_id][dish]) {
+                bizStats[rev.business_id][dish] = [0, 0];
+              }
+              bizStats[rev.business_id][dish][0] += rev.stars;
+              bizStats[rev.business_id][dish][1] += 1;
+            }
+          }
+        }
+
+        var output = '=== Overall Dish Ratings ===\n';
+        var sorted = [];
+        for (var dish in dishStats) {
+          if (dishStats[dish][1] > 0) {
+            sorted.push([dish, dishStats[dish][0] / dishStats[dish][1], dishStats[dish][1]]);
+          }
+        }
+        sorted.sort((a, b) => b[1] - a[1]);
+        sorted.forEach(d => {
+          output += `${d[0]}: avg score = ${d[1].toFixed(2)}, count = ${d[2]}\n`;
+        });
+
+        output += '\n=== Business-specific Dish Ratings (sorted by average score for "' + dishes[0] + '") ===\n';
+        const bizArray = [];
+
+        for (let bizId in bizStats) {
+          const firstDish = dishes[0];
+          const firstDishData = bizStats[bizId][firstDish];
+          const avg = firstDishData ? (firstDishData[0] / firstDishData[1]) : -1;
+          bizArray.push({ bizId, avg });
+        }
+
+        bizArray.sort((a, b) => b.avg - a.avg);
+
+        bizArray.forEach(biz => {
+          const bizId = biz.bizId;
+          const name = bizNames[bizId] || bizId;
+          output += `\nBusiness: ${name}\n`;
+          const dishEntries = bizStats[bizId];
+          for (let d in dishEntries) {
+            const [sum, count] = dishEntries[d];
+            output += `  ${d}: avg score = ${(sum / count).toFixed(2)}, count = ${count}\n`;
+          }
+        });
+
+        document.getElementById("output").textContent = output;
+        document.getElementById("status").textContent = "Processing complete.";
+        document.getElementById("spinner").style.display = "none";
+      }, 50);
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+      document.getElementById("loadBtn").onclick = loadData;
+      document.getElementById("processBtn").onclick = processData;
+    });
+  </script>
+</body>
 </html>
